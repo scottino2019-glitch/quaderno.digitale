@@ -3,33 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDF Annotator Mobile</title>
+<title>📄 PDF Annotator Mobile</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-body {
-    margin:0; padding:0; font-family: Arial, sans-serif;
-    background: #f0f0f0; display:flex; flex-direction:column; height:100vh;
-}
-.header {
-    background: #4f46e5; color:white; padding:12px; text-align:center; font-weight:bold;
-}
-.toolbar {
-    display:flex; gap:5px; padding:5px; background:#fff; overflow-x:auto;
-}
+body { margin:0; padding:0; font-family: Arial, sans-serif; background:#f0f0f0; display:flex; flex-direction:column; height:100vh; }
+.header { background:#4f46e5; color:white; padding:12px; text-align:center; font-weight:bold; font-size:1rem; }
+.toolbar { display:flex; gap:5px; padding:5px; background:#fff; overflow-x:auto; }
 .toolbar button { padding:8px; border:none; border-radius:6px; background:#eee; cursor:pointer; }
 .toolbar button.active { background:#4f46e5; color:white; }
-#pdfContainer {
-    flex:1; overflow:auto; position:relative; background:#d1d5db;
-}
-.annotation {
-    position:absolute; background:rgba(255,255,200,0.9); border:1px solid #4f46e5;
-    padding:2px 4px; border-radius:4px; font-size:14px; cursor:pointer;
-}
-#pageNav {
-    display:flex; justify-content:center; gap:10px; padding:5px; background:#fff;
-}
+#pdfContainer { flex:1; overflow:auto; position:relative; background:#d1d5db; display:flex; justify-content:center; align-items:flex-start; }
+.annotation { position:absolute; background:rgba(255,255,200,0.9); border:1px solid #4f46e5; padding:2px 4px; border-radius:4px; font-size:14px; cursor:pointer; max-width:150px; word-wrap:break-word; }
+#pageNav { display:flex; justify-content:center; gap:10px; padding:5px; background:#fff; flex-wrap:wrap; }
 input[type="file"] { display:none; }
+@media (max-width:480px){ .toolbar button{ font-size:12px; padding:6px; } .annotation{ font-size:12px; max-width:120px; } }
 </style>
 </head>
 <body>
@@ -40,15 +27,16 @@ input[type="file"] { display:none; }
     <button onclick="document.getElementById('pdfInput').click()">📁 Carica PDF</button>
     <button class="tool-btn active" data-tool="text" onclick="selectTool('text')">✏️ Nota</button>
     <button onclick="undoAnnotation()">↩️ Annulla</button>
+    <button onclick="clearAnnotations()">🗑️ Ripulisci</button>
     <button onclick="savePDF()">💾 Salva PDF</button>
 </div>
 
 <div id="pdfContainer"></div>
 
 <div id="pageNav">
-    <button onclick="prevPage()">◀</button>
+    <button onclick="prevPage()">◀ Indietro</button>
     <span id="pageInfo">0 / 0</span>
-    <button onclick="nextPage()">▶</button>
+    <button onclick="nextPage()">Avanti ▶</button>
 </div>
 
 <input type="file" id="pdfInput" accept=".pdf" onchange="loadPDF()">
@@ -62,7 +50,6 @@ let pageImages = {};
 let pageAnnotations = {};
 let annotationsStack = [];
 let currentTool = 'text';
-
 const pdfContainer = document.getElementById('pdfContainer');
 const pageInfo = document.getElementById('pageInfo');
 
@@ -89,20 +76,21 @@ async function loadPDF(){
 
 async function renderPage(pageNum){
     const page = await pdfDoc.getPage(pageNum);
+    const containerWidth = pdfContainer.clientWidth - 20;
     const viewport = page.getViewport({scale});
+    scale = containerWidth / viewport.width;
+    const scaledViewport = page.getViewport({scale});
+
     const canvas = document.createElement('canvas');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+    canvas.width = scaledViewport.width;
+    canvas.height = scaledViewport.height;
     const ctx = canvas.getContext('2d');
-    await page.render({canvasContext:ctx, viewport:viewport}).promise;
+    await page.render({canvasContext: ctx, viewport: scaledViewport}).promise;
 
     pdfContainer.innerHTML = '';
     pdfContainer.appendChild(canvas);
-
-    // Salva immagine per salvataggio PDF
     pageImages[pageNum] = canvas;
 
-    // Aggiungi annotazioni salvate
     if(pageAnnotations[pageNum]){
         pageAnnotations[pageNum].forEach(a=>{
             const div = document.createElement('div');
@@ -151,8 +139,17 @@ function undoAnnotation(){
     if(last) saveAnnotations();
 }
 
+function clearAnnotations(){
+    if(confirm('Cancellare tutte le annotazioni di questa pagina?')){
+        pdfContainer.querySelectorAll('.annotation').forEach(div=>div.remove());
+        pageAnnotations[currentPage] = [];
+        annotationsStack = annotationsStack.filter(a=>a.page!==currentPage);
+    }
+}
+
 async function nextPage(){
     if(currentPage>=totalPages) return;
+    saveAnnotations();
     currentPage++;
     pageInfo.textContent = `${currentPage} / ${totalPages}`;
     await renderPage(currentPage);
@@ -160,6 +157,7 @@ async function nextPage(){
 
 async function prevPage(){
     if(currentPage<=1) return;
+    saveAnnotations();
     currentPage--;
     pageInfo.textContent = `${currentPage} / ${totalPages}`;
     await renderPage(currentPage);
@@ -167,6 +165,7 @@ async function prevPage(){
 
 async function savePDF(){
     if(!pdfDoc) return alert('Carica prima un PDF!');
+    saveAnnotations();
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF();
 
@@ -181,7 +180,7 @@ async function savePDF(){
             pageAnnotations[p].forEach(a=>{
                 const scaleX = pdfWidth / canvas.width;
                 const scaleY = pdfHeight / canvas.height;
-                pdf.setFontSize(10);
+                pdf.setFontSize(12);
                 pdf.setTextColor(0,0,255);
                 pdf.text(a.text,a.x*scaleX,a.y*scaleY+10);
             });
