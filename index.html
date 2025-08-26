@@ -3,26 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>📄 PDF Annotator Mobile</title>
+<title>PDF Annotator Mobile</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-body { margin:0; padding:0; font-family: Arial, sans-serif; background:#f0f0f0; display:flex; flex-direction:column; height:100vh; }
-.header { background:#4f46e5; color:white; padding:12px; text-align:center; font-weight:bold; font-size:1rem; }
-.toolbar { display:flex; gap:5px; padding:5px; background:#fff; overflow-x:auto; }
-.toolbar button { padding:8px; border:none; border-radius:6px; background:#eee; cursor:pointer; }
-.toolbar button.active { background:#4f46e5; color:white; }
-#pdfContainer { flex:1; overflow:auto; position:relative; background:#d1d5db; display:flex; justify-content:center; align-items:flex-start; }
-.annotation { position:absolute; background:rgba(255,255,200,0.9); border:1px solid #4f46e5; padding:2px 4px; border-radius:4px; font-size:14px; cursor:pointer; max-width:150px; word-wrap:break-word; }
-#pageNav { display:flex; justify-content:center; gap:10px; padding:5px; background:#fff; flex-wrap:wrap; }
-input[type="file"] { display:none; }
-@media (max-width:480px){ .toolbar button{ font-size:12px; padding:6px; } .annotation{ font-size:12px; max-width:120px; } }
+body{margin:0;padding:0;font-family:sans-serif;background:#f0f0f0;}
+.header{background:#4f46e5;color:white;padding:10px;text-align:center;font-weight:bold;}
+.toolbar{display:flex;flex-wrap:wrap;gap:5px;padding:5px;background:#fff;overflow-x:auto;}
+.toolbar button{padding:8px;border:none;border-radius:6px;background:#eee;cursor:pointer;}
+.toolbar button.active{background:#4f46e5;color:white;}
+#pdfContainer{flex:1;overflow-y:auto;padding:5px;}
+.pageCanvasWrapper{position:relative;margin-bottom:15px;}
+.annotation{position:absolute;background:rgba(255,255,200,0.9);border:1px solid #4f46e5;padding:2px 4px;border-radius:4px;font-size:14px;cursor:pointer;max-width:150px;word-wrap:break-word;}
+@media(max-width:480px){.toolbar button{font-size:12px;padding:6px}.annotation{font-size:12px;max-width:120px;}}
 </style>
 </head>
 <body>
-
 <div class="header">📄 PDF Annotator Mobile</div>
-
 <div class="toolbar">
     <button onclick="document.getElementById('pdfInput').click()">📁 Carica PDF</button>
     <button class="tool-btn active" data-tool="text" onclick="selectTool('text')">✏️ Nota</button>
@@ -32,164 +29,114 @@ input[type="file"] { display:none; }
 </div>
 
 <div id="pdfContainer"></div>
-
-<div id="pageNav">
-    <button onclick="prevPage()">◀ Indietro</button>
-    <span id="pageInfo">0 / 0</span>
-    <button onclick="nextPage()">Avanti ▶</button>
-</div>
-
 <input type="file" id="pdfInput" accept=".pdf" onchange="loadPDF()">
 
 <script>
-let pdfDoc = null;
-let currentPage = 1;
-let totalPages = 0;
-let scale = 1.2;
-let pageImages = {};
-let pageAnnotations = {};
-let annotationsStack = [];
-let currentTool = 'text';
-const pdfContainer = document.getElementById('pdfContainer');
-const pageInfo = document.getElementById('pageInfo');
+let pdfDoc=null;
+let scale=2; // render alta qualità
+let pageAnnotations={};
+let annotationsStack=[];
+let currentTool='text';
+const pdfContainer=document.getElementById('pdfContainer');
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 function selectTool(tool){
-    currentTool = tool;
+    currentTool=tool;
     document.querySelectorAll('.tool-btn').forEach(btn=>btn.classList.remove('active'));
     if(tool==='text') document.querySelector('[data-tool="text"]').classList.add('active');
 }
 
 async function loadPDF(){
-    const file = document.getElementById('pdfInput').files[0];
+    const file=document.getElementById('pdfInput').files[0];
     if(!file) return;
-    const arrayBuffer = await file.arrayBuffer();
-    pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
-    totalPages = pdfDoc.numPages;
-    currentPage = 1;
-    pageAnnotations = {};
-    annotationsStack = [];
-    await renderPage(currentPage);
-    pageInfo.textContent = `${currentPage} / ${totalPages}`;
-}
+    const arrayBuffer=await file.arrayBuffer();
+    pdfDoc=await pdfjsLib.getDocument(arrayBuffer).promise;
+    pageAnnotations={};
+    annotationsStack=[];
+    pdfContainer.innerHTML='';
+    for(let i=1;i<=pdfDoc.numPages;i++){
+        const page=await pdfDoc.getPage(i);
+        const viewport=page.getViewport({scale});
+        const canvas=document.createElement('canvas');
+        canvas.width=viewport.width;
+        canvas.height=viewport.height;
+        const ctx=canvas.getContext('2d');
+        await page.render({canvasContext:ctx,viewport}).promise;
 
-async function renderPage(pageNum){
-    const page = await pdfDoc.getPage(pageNum);
-    const containerWidth = pdfContainer.clientWidth - 20;
-    const viewport = page.getViewport({scale});
-    scale = containerWidth / viewport.width;
-    const scaledViewport = page.getViewport({scale});
+        const wrapper=document.createElement('div');
+        wrapper.className='pageCanvasWrapper';
+        wrapper.dataset.pageNumber=i;
+        wrapper.appendChild(canvas);
+        pdfContainer.appendChild(wrapper);
 
-    const canvas = document.createElement('canvas');
-    canvas.width = scaledViewport.width;
-    canvas.height = scaledViewport.height;
-    const ctx = canvas.getContext('2d');
-    await page.render({canvasContext: ctx, viewport: scaledViewport}).promise;
-
-    pdfContainer.innerHTML = '';
-    pdfContainer.appendChild(canvas);
-    pageImages[pageNum] = canvas;
-
-    if(pageAnnotations[pageNum]){
-        pageAnnotations[pageNum].forEach(a=>{
-            const div = document.createElement('div');
+        wrapper.addEventListener('click', e=>{
+            if(currentTool!=='text') return;
+            const rect=wrapper.getBoundingClientRect();
+            const x=e.clientX-rect.left;
+            const y=e.clientY-rect.top;
+            const text=prompt('Scrivi la nota:');
+            if(!text) return;
+            const div=document.createElement('div');
             div.className='annotation';
-            div.style.left=a.x+'px';
-            div.style.top=a.y+'px';
-            div.textContent = a.text;
-            div.onclick = ()=>{ if(confirm('Eliminare questa nota?')){ div.remove(); saveAnnotations(); }};
-            pdfContainer.appendChild(div);
+            div.style.left=x+'px';
+            div.style.top=y+'px';
+            div.textContent=text;
+            div.onclick=()=>{ if(confirm('Eliminare questa nota?')){ div.remove(); saveAnnotations(i); } };
+            wrapper.appendChild(div);
+            if(!pageAnnotations[i]) pageAnnotations[i]=[];
+            pageAnnotations[i].push({x,y,text});
+            annotationsStack.push({page:i,element:div});
         });
     }
 }
 
-pdfContainer.addEventListener('click', (e)=>{
-    if(currentTool!=='text') return;
-    const rect = pdfContainer.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const text = prompt('Scrivi la nota:');
-    if(!text) return;
-
-    const div = document.createElement('div');
-    div.className='annotation';
-    div.style.left=x+'px';
-    div.style.top=y+'px';
-    div.textContent = text;
-    div.onclick = ()=>{ if(confirm('Eliminare questa nota?')){ div.remove(); saveAnnotations(); }};
-
-    pdfContainer.appendChild(div);
-
-    if(!pageAnnotations[currentPage]) pageAnnotations[currentPage]=[];
-    pageAnnotations[currentPage].push({x,y,text});
-    annotationsStack.push({page:currentPage, element:div});
-});
-
-function saveAnnotations(){
-    pageAnnotations[currentPage] = [];
-    pdfContainer.querySelectorAll('.annotation').forEach(div=>{
-        pageAnnotations[currentPage].push({x:parseFloat(div.style.left), y:parseFloat(div.style.top), text:div.textContent});
+function saveAnnotations(pageNum){
+    const wrapper=document.querySelector(`.pageCanvasWrapper[data-page-number="${pageNum}"]`);
+    pageAnnotations[pageNum]=[];
+    wrapper.querySelectorAll('.annotation').forEach(div=>{
+        pageAnnotations[pageNum].push({x:parseFloat(div.style.left),y:parseFloat(div.style.top),text:div.textContent});
     });
 }
 
 function undoAnnotation(){
-    const last = annotationsStack.pop();
+    const last=annotationsStack.pop();
     if(last && last.element) last.element.remove();
-    if(last) saveAnnotations();
+    if(last) saveAnnotations(last.page);
 }
 
 function clearAnnotations(){
-    if(confirm('Cancellare tutte le annotazioni di questa pagina?')){
-        pdfContainer.querySelectorAll('.annotation').forEach(div=>div.remove());
-        pageAnnotations[currentPage] = [];
-        annotationsStack = annotationsStack.filter(a=>a.page!==currentPage);
+    if(confirm('Cancellare tutte le annotazioni?')){
+        Object.keys(pageAnnotations).forEach(page=>{
+            const wrapper=document.querySelector(`.pageCanvasWrapper[data-page-number="${page}"]`);
+            wrapper.querySelectorAll('.annotation').forEach(div=>div.remove());
+            pageAnnotations[page]=[];
+        });
+        annotationsStack=[];
     }
-}
-
-async function nextPage(){
-    if(currentPage>=totalPages) return;
-    saveAnnotations();
-    currentPage++;
-    pageInfo.textContent = `${currentPage} / ${totalPages}`;
-    await renderPage(currentPage);
-}
-
-async function prevPage(){
-    if(currentPage<=1) return;
-    saveAnnotations();
-    currentPage--;
-    pageInfo.textContent = `${currentPage} / ${totalPages}`;
-    await renderPage(currentPage);
 }
 
 async function savePDF(){
     if(!pdfDoc) return alert('Carica prima un PDF!');
-    saveAnnotations();
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF();
+    const { jsPDF }=window.jspdf;
+    const pdf=new jsPDF({unit:'px', format:[pdfDoc.getPage(1).getViewport({scale:1}).width, pdfDoc.getPage(1).getViewport({scale:1}).height]});
 
-    for(let p=1; p<=totalPages; p++){
-        const canvas = pageImages[p];
-        const imgData = canvas.toDataURL('image/png');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth)/canvas.width;
-        pdf.addImage(imgData,'PNG',0,0,pdfWidth,pdfHeight);
-
-        if(pageAnnotations[p]){
-            pageAnnotations[p].forEach(a=>{
-                const scaleX = pdfWidth / canvas.width;
-                const scaleY = pdfHeight / canvas.height;
+    for(let i=1;i<=pdfDoc.numPages;i++){
+        const wrapper=document.querySelector(`.pageCanvasWrapper[data-page-number="${i}"]`);
+        const canvas=wrapper.querySelector('canvas');
+        const imgData=canvas.toDataURL('image/png');
+        pdf.addImage(imgData,'PNG',0,0,canvas.width,canvas.height);
+        if(pageAnnotations[i]){
+            pageAnnotations[i].forEach(a=>{
                 pdf.setFontSize(12);
                 pdf.setTextColor(0,0,255);
-                pdf.text(a.text,a.x*scaleX,a.y*scaleY+10);
+                pdf.text(a.text,a.x,a.y+10);
             });
         }
-        if(p<totalPages) pdf.addPage();
+        if(i<pdfDoc.numPages) pdf.addPage();
     }
     pdf.save('PDF_annotato.pdf');
 }
 </script>
-
 </body>
 </html>
