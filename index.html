@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📖 PDF Editor Mobile</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+    body {
+        margin: 0;
+        font-family: 'Arial', sans-serif;
+        background: #f3f3f3;
+    }
+    .header {
+        background: #4f46e5;
+        color: white;
+        padding: 12px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 1.2em;
+    }
+    .toolbar {
+        display: flex;
+        overflow-x: auto;
+        padding: 8px;
+        gap: 6px;
+        background: #fff;
+        border-bottom: 1px solid #ccc;
+    }
+    .toolbar button {
+        padding: 8px 12px;
+        border: none;
+        border-radius: 6px;
+        background: #4f46e5;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .toolbar button:active {
+        background: #3c37b5;
+    }
+    #pdfContainer {
+        padding: 10px;
+        display: flex;
+        justify-content: center;
+        overflow-x: auto;
+    }
+    .pdf-page {
+        position: relative;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        margin-bottom: 20px;
+        background: white;
+    }
+    .pdf-page img {
+        width: 100%;
+        display: block;
+        border-radius: 8px;
+    }
+    .annotation {
+        position: absolute;
+        background: rgba(255,255,200,0.9);
+        border: 1px solid #f5d742;
+        border-radius: 6px;
+        padding: 4px 6px;
+        font-size: 14px;
+        cursor: pointer;
+        max-width: 80%;
+        word-wrap: break-word;
+    }
+    .annotation:active {
+        transform: scale(0.97);
+    }
+    input[type="file"] {
+        display: none;
+    }
+</style>
+</head>
+<body>
+
+<div class="header">📖 PDF Editor Mobile</div>
+
+<div class="toolbar">
+    <button onclick="document.getElementById('pdfInput').click()">📁 Carica PDF</button>
+    <button onclick="undoAnnotation()">↩️ Annulla</button>
+    <button onclick="clearAnnotations()">🗑️ Pulisci</button>
+    <button onclick="prevPage()">◀ Pagina</button>
+    <button onclick="nextPage()">Pagina ▶</button>
+    <span id="pageInfo" style="margin-left: 10px; font-weight:bold;"></span>
+</div>
+
+<div id="pdfContainer"></div>
+
+<input type="file" id="pdfInput" accept=".pdf">
+
+<script>
+let pdfDoc = null;
+let currentPage = 1;
+let totalPages = 0;
+let pageImages = [];
+let pageAnnotations = {};
+
+const pdfContainer = document.getElementById('pdfContainer');
+
+document.getElementById('pdfInput').addEventListener('change', async function(e){
+    const file = e.target.files[0];
+    if(file && file.type === 'application/pdf'){
+        const arrayBuffer = await file.arrayBuffer();
+        pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
+        totalPages = pdfDoc.numPages;
+        currentPage = 1;
+        pageImages = [];
+        pageAnnotations = {};
+        await renderPage(currentPage);
+    }
+});
+
+async function renderPage(pageNum){
+    const page = await pdfDoc.getPage(pageNum);
+    const viewport = page.getViewport({scale: 2});
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({canvasContext: ctx, viewport: viewport}).promise;
+    
+    const imgData = canvas.toDataURL();
+    pageImages[pageNum] = imgData;
+    
+    displayPage();
+}
+
+function displayPage(){
+    pdfContainer.innerHTML = '';
+    const div = document.createElement('div');
+    div.className = 'pdf-page';
+    div.style.width = '90%';
+    
+    const img = document.createElement('img');
+    img.src = pageImages[currentPage];
+    div.appendChild(img);
+    
+    // Ripristina annotazioni
+    if(pageAnnotations[currentPage]){
+        pageAnnotations[currentPage].forEach(data => {
+            const ann = createAnnotationDiv(data.text, data.x, data.y);
+            div.appendChild(ann);
+        });
+    }
+    
+    // Click per aggiungere nota
+    div.addEventListener('click', function(e){
+        const rect = div.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const text = prompt('Scrivi la tua nota:');
+        if(text){
+            addAnnotation(currentPage, text, x, y);
+            const annDiv = createAnnotationDiv(text, x, y);
+            div.appendChild(annDiv);
+        }
+    });
+    
+    pdfContainer.appendChild(div);
+    updatePageInfo();
+}
+
+function createAnnotationDiv(text, x, y){
+    const ann = document.createElement('div');
+    ann.className = 'annotation';
+    ann.textContent = text;
+    ann.style.left = x + 'px';
+    ann.style.top = y + 'px';
+    ann.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        if(confirm('Eliminare questa nota?')){
+            ann.remove();
+            removeAnnotation(currentPage, text, x, y);
+        }
+    });
+    return ann;
+}
+
+function addAnnotation(page, text, x, y){
+    if(!pageAnnotations[page]) pageAnnotations[page] = [];
+    pageAnnotations[page].push({text, x, y});
+}
+
+function removeAnnotation(page, text, x, y){
+    if(!pageAnnotations[page]) return;
+    pageAnnotations[page] = pageAnnotations[page].filter(a=>!(a.text===text && a.x===x && a.y===y));
+}
+
+function undoAnnotation(){
+    if(!pageAnnotations[currentPage] || pageAnnotations[currentPage].length===0) return;
+    pageAnnotations[currentPage].pop();
+    displayPage();
+}
+
+function clearAnnotations(){
+    if(confirm('Cancellare tutte le annotazioni di questa pagina?')){
+        pageAnnotations[currentPage] = [];
+        displayPage();
+    }
+}
+
+async function nextPage(){
+    if(currentPage<totalPages){
+        currentPage++;
+        if(!pageImages[currentPage]) await renderPage(currentPage);
+        else displayPage();
+    }
+}
+
+async function prevPage(){
+    if(currentPage>1){
+        currentPage--;
+        displayPage();
+    }
+}
+
+function updatePageInfo(){
+    document.getElementById('pageInfo').textContent = `Pagina ${currentPage} / ${totalPages}`;
+}
+</script>
+
+</body>
+</html>
