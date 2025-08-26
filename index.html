@@ -3,224 +3,192 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>📖 PDF Editor Mobile</title>
+<title>PDF Annotator Mobile</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-    body {
-        margin: 0;
-        font-family: 'Arial', sans-serif;
-        background: #f3f3f3;
-    }
-    .header {
-        background: #4f46e5;
-        color: white;
-        padding: 12px;
-        text-align: center;
-        font-weight: bold;
-        font-size: 1.2em;
-    }
-    .toolbar {
-        display: flex;
-        overflow-x: auto;
-        padding: 8px;
-        gap: 6px;
-        background: #fff;
-        border-bottom: 1px solid #ccc;
-    }
-    .toolbar button {
-        padding: 8px 12px;
-        border: none;
-        border-radius: 6px;
-        background: #4f46e5;
-        color: white;
-        font-weight: bold;
-        cursor: pointer;
-    }
-    .toolbar button:active {
-        background: #3c37b5;
-    }
-    #pdfContainer {
-        padding: 10px;
-        display: flex;
-        justify-content: center;
-        overflow-x: auto;
-    }
-    .pdf-page {
-        position: relative;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        border-radius: 8px;
-        margin-bottom: 20px;
-        background: white;
-    }
-    .pdf-page img {
-        width: 100%;
-        display: block;
-        border-radius: 8px;
-    }
-    .annotation {
-        position: absolute;
-        background: rgba(255,255,200,0.9);
-        border: 1px solid #f5d742;
-        border-radius: 6px;
-        padding: 4px 6px;
-        font-size: 14px;
-        cursor: pointer;
-        max-width: 80%;
-        word-wrap: break-word;
-    }
-    .annotation:active {
-        transform: scale(0.97);
-    }
-    input[type="file"] {
-        display: none;
-    }
+body {
+    margin:0; padding:0; font-family: Arial, sans-serif;
+    background: #f0f0f0; display:flex; flex-direction:column; height:100vh;
+}
+.header {
+    background: #4f46e5; color:white; padding:12px; text-align:center; font-weight:bold;
+}
+.toolbar {
+    display:flex; gap:5px; padding:5px; background:#fff; overflow-x:auto;
+}
+.toolbar button { padding:8px; border:none; border-radius:6px; background:#eee; cursor:pointer; }
+.toolbar button.active { background:#4f46e5; color:white; }
+#pdfContainer {
+    flex:1; overflow:auto; position:relative; background:#d1d5db;
+}
+.annotation {
+    position:absolute; background:rgba(255,255,200,0.9); border:1px solid #4f46e5;
+    padding:2px 4px; border-radius:4px; font-size:14px; cursor:pointer;
+}
+#pageNav {
+    display:flex; justify-content:center; gap:10px; padding:5px; background:#fff;
+}
+input[type="file"] { display:none; }
 </style>
 </head>
 <body>
 
-<div class="header">📖 PDF Editor Mobile</div>
+<div class="header">📄 PDF Annotator Mobile</div>
 
 <div class="toolbar">
     <button onclick="document.getElementById('pdfInput').click()">📁 Carica PDF</button>
+    <button class="tool-btn active" data-tool="text" onclick="selectTool('text')">✏️ Nota</button>
     <button onclick="undoAnnotation()">↩️ Annulla</button>
-    <button onclick="clearAnnotations()">🗑️ Pulisci</button>
-    <button onclick="prevPage()">◀ Pagina</button>
-    <button onclick="nextPage()">Pagina ▶</button>
-    <span id="pageInfo" style="margin-left: 10px; font-weight:bold;"></span>
+    <button onclick="savePDF()">💾 Salva PDF</button>
 </div>
 
 <div id="pdfContainer"></div>
 
-<input type="file" id="pdfInput" accept=".pdf">
+<div id="pageNav">
+    <button onclick="prevPage()">◀</button>
+    <span id="pageInfo">0 / 0</span>
+    <button onclick="nextPage()">▶</button>
+</div>
+
+<input type="file" id="pdfInput" accept=".pdf" onchange="loadPDF()">
 
 <script>
 let pdfDoc = null;
 let currentPage = 1;
 let totalPages = 0;
-let pageImages = [];
+let scale = 1.2;
+let pageImages = {};
 let pageAnnotations = {};
+let annotationsStack = [];
+let currentTool = 'text';
 
 const pdfContainer = document.getElementById('pdfContainer');
+const pageInfo = document.getElementById('pageInfo');
 
-document.getElementById('pdfInput').addEventListener('change', async function(e){
-    const file = e.target.files[0];
-    if(file && file.type === 'application/pdf'){
-        const arrayBuffer = await file.arrayBuffer();
-        pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
-        totalPages = pdfDoc.numPages;
-        currentPage = 1;
-        pageImages = [];
-        pageAnnotations = {};
-        await renderPage(currentPage);
-    }
-});
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+function selectTool(tool){
+    currentTool = tool;
+    document.querySelectorAll('.tool-btn').forEach(btn=>btn.classList.remove('active'));
+    if(tool==='text') document.querySelector('[data-tool="text"]').classList.add('active');
+}
+
+async function loadPDF(){
+    const file = document.getElementById('pdfInput').files[0];
+    if(!file) return;
+    const arrayBuffer = await file.arrayBuffer();
+    pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
+    totalPages = pdfDoc.numPages;
+    currentPage = 1;
+    pageAnnotations = {};
+    annotationsStack = [];
+    await renderPage(currentPage);
+    pageInfo.textContent = `${currentPage} / ${totalPages}`;
+}
 
 async function renderPage(pageNum){
     const page = await pdfDoc.getPage(pageNum);
-    const viewport = page.getViewport({scale: 2});
+    const viewport = page.getViewport({scale});
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
     canvas.width = viewport.width;
     canvas.height = viewport.height;
-    await page.render({canvasContext: ctx, viewport: viewport}).promise;
-    
-    const imgData = canvas.toDataURL();
-    pageImages[pageNum] = imgData;
-    
-    displayPage();
-}
+    const ctx = canvas.getContext('2d');
+    await page.render({canvasContext:ctx, viewport:viewport}).promise;
 
-function displayPage(){
     pdfContainer.innerHTML = '';
-    const div = document.createElement('div');
-    div.className = 'pdf-page';
-    div.style.width = '90%';
-    
-    const img = document.createElement('img');
-    img.src = pageImages[currentPage];
-    div.appendChild(img);
-    
-    // Ripristina annotazioni
-    if(pageAnnotations[currentPage]){
-        pageAnnotations[currentPage].forEach(data => {
-            const ann = createAnnotationDiv(data.text, data.x, data.y);
-            div.appendChild(ann);
+    pdfContainer.appendChild(canvas);
+
+    // Salva immagine per salvataggio PDF
+    pageImages[pageNum] = canvas;
+
+    // Aggiungi annotazioni salvate
+    if(pageAnnotations[pageNum]){
+        pageAnnotations[pageNum].forEach(a=>{
+            const div = document.createElement('div');
+            div.className='annotation';
+            div.style.left=a.x+'px';
+            div.style.top=a.y+'px';
+            div.textContent = a.text;
+            div.onclick = ()=>{ if(confirm('Eliminare questa nota?')){ div.remove(); saveAnnotations(); }};
+            pdfContainer.appendChild(div);
         });
     }
-    
-    // Click per aggiungere nota
-    div.addEventListener('click', function(e){
-        const rect = div.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const text = prompt('Scrivi la tua nota:');
-        if(text){
-            addAnnotation(currentPage, text, x, y);
-            const annDiv = createAnnotationDiv(text, x, y);
-            div.appendChild(annDiv);
-        }
-    });
-    
+}
+
+pdfContainer.addEventListener('click', (e)=>{
+    if(currentTool!=='text') return;
+    const rect = pdfContainer.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const text = prompt('Scrivi la nota:');
+    if(!text) return;
+
+    const div = document.createElement('div');
+    div.className='annotation';
+    div.style.left=x+'px';
+    div.style.top=y+'px';
+    div.textContent = text;
+    div.onclick = ()=>{ if(confirm('Eliminare questa nota?')){ div.remove(); saveAnnotations(); }};
+
     pdfContainer.appendChild(div);
-    updatePageInfo();
-}
 
-function createAnnotationDiv(text, x, y){
-    const ann = document.createElement('div');
-    ann.className = 'annotation';
-    ann.textContent = text;
-    ann.style.left = x + 'px';
-    ann.style.top = y + 'px';
-    ann.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        if(confirm('Eliminare questa nota?')){
-            ann.remove();
-            removeAnnotation(currentPage, text, x, y);
-        }
+    if(!pageAnnotations[currentPage]) pageAnnotations[currentPage]=[];
+    pageAnnotations[currentPage].push({x,y,text});
+    annotationsStack.push({page:currentPage, element:div});
+});
+
+function saveAnnotations(){
+    pageAnnotations[currentPage] = [];
+    pdfContainer.querySelectorAll('.annotation').forEach(div=>{
+        pageAnnotations[currentPage].push({x:parseFloat(div.style.left), y:parseFloat(div.style.top), text:div.textContent});
     });
-    return ann;
-}
-
-function addAnnotation(page, text, x, y){
-    if(!pageAnnotations[page]) pageAnnotations[page] = [];
-    pageAnnotations[page].push({text, x, y});
-}
-
-function removeAnnotation(page, text, x, y){
-    if(!pageAnnotations[page]) return;
-    pageAnnotations[page] = pageAnnotations[page].filter(a=>!(a.text===text && a.x===x && a.y===y));
 }
 
 function undoAnnotation(){
-    if(!pageAnnotations[currentPage] || pageAnnotations[currentPage].length===0) return;
-    pageAnnotations[currentPage].pop();
-    displayPage();
-}
-
-function clearAnnotations(){
-    if(confirm('Cancellare tutte le annotazioni di questa pagina?')){
-        pageAnnotations[currentPage] = [];
-        displayPage();
-    }
+    const last = annotationsStack.pop();
+    if(last && last.element) last.element.remove();
+    if(last) saveAnnotations();
 }
 
 async function nextPage(){
-    if(currentPage<totalPages){
-        currentPage++;
-        if(!pageImages[currentPage]) await renderPage(currentPage);
-        else displayPage();
-    }
+    if(currentPage>=totalPages) return;
+    currentPage++;
+    pageInfo.textContent = `${currentPage} / ${totalPages}`;
+    await renderPage(currentPage);
 }
 
 async function prevPage(){
-    if(currentPage>1){
-        currentPage--;
-        displayPage();
-    }
+    if(currentPage<=1) return;
+    currentPage--;
+    pageInfo.textContent = `${currentPage} / ${totalPages}`;
+    await renderPage(currentPage);
 }
 
-function updatePageInfo(){
-    document.getElementById('pageInfo').textContent = `Pagina ${currentPage} / ${totalPages}`;
+async function savePDF(){
+    if(!pdfDoc) return alert('Carica prima un PDF!');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+
+    for(let p=1; p<=totalPages; p++){
+        const canvas = pageImages[p];
+        const imgData = canvas.toDataURL('image/png');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth)/canvas.width;
+        pdf.addImage(imgData,'PNG',0,0,pdfWidth,pdfHeight);
+
+        if(pageAnnotations[p]){
+            pageAnnotations[p].forEach(a=>{
+                const scaleX = pdfWidth / canvas.width;
+                const scaleY = pdfHeight / canvas.height;
+                pdf.setFontSize(10);
+                pdf.setTextColor(0,0,255);
+                pdf.text(a.text,a.x*scaleX,a.y*scaleY+10);
+            });
+        }
+        if(p<totalPages) pdf.addPage();
+    }
+    pdf.save('PDF_annotato.pdf');
 }
 </script>
 
