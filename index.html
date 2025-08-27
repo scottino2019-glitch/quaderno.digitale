@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>✏️ Editor Testo PDF</title>
+    <title>✏️ Quaderno Digitale</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * {
@@ -189,6 +189,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            position: relative;
         }
 
         .pdf-canvas {
@@ -360,6 +361,45 @@
         .delete-btn:hover {
             background: #ff3742;
             transform: scale(1.05);
+        }
+
+        .crosshair {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 10;
+            display: none;
+        }
+
+        .crosshair::before, .crosshair::after {
+            content: '';
+            position: absolute;
+            background-color: rgba(255, 0, 0, 0.7);
+        }
+
+        .crosshair::before {
+            width: 2px;
+            height: 20px;
+            left: 9px;
+            top: 0;
+        }
+
+        .crosshair::after {
+            width: 20px;
+            height: 2px;
+            top: 9px;
+            left: 0;
+        }
+
+        .text-preview {
+            position: absolute;
+            pointer-events: none;
+            z-index: 5;
+            padding: 5px;
+            border: 1px dashed #667eea;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: none;
         }
 
         @media (max-width: 768px) {
@@ -542,7 +582,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>✏️ Editor Testo PDF</h1>
+            <h1>✏️ Quaderno Digitale</h1>
             <p>Aggiungi testo ai tuoi documenti PDF in modo semplice e veloce</p>
         </div>
 
@@ -585,6 +625,15 @@
                             <option value="Helvetica">Helvetica</option>
                             <option value="Times-Roman">Times Roman</option>
                             <option value="Courier">Courier</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Allineamento testo:</label>
+                        <select id="textAlign">
+                            <option value="left">Sinistra</option>
+                            <option value="center" selected>Centro</option>
+                            <option value="right">Destra</option>
                         </select>
                     </div>
                     
@@ -639,6 +688,9 @@
         </div>
     </div>
 
+    <div id="crosshair" class="crosshair"></div>
+    <div id="textPreview" class="text-preview"></div>
+
     <script>
         // Variabili globali
         let currentPDF = null;
@@ -648,6 +700,8 @@
         let editMode = false;
         let textElements = [];
         let originalPDFData = null;
+        let canvasScaleX = 1;
+        let canvasScaleY = 1;
 
         // Inizializzazione
         document.addEventListener('DOMContentLoaded', function() {
@@ -661,13 +715,33 @@
             // Range slider per font size
             document.getElementById('fontSize').addEventListener('input', function() {
                 document.getElementById('fontSizeValue').textContent = this.value + 'px';
+                updateTextPreview();
             });
+
+            // Cambiamenti nel testo
+            document.getElementById('textInput').addEventListener('input', updateTextPreview);
+            document.getElementById('textColor').addEventListener('input', updateTextPreview);
+            document.getElementById('fontFamily').addEventListener('change', updateTextPreview);
+            document.getElementById('textAlign').addEventListener('change', updateTextPreview);
 
             // Canvas click per aggiungere testo
             document.getElementById('pdfViewer').addEventListener('click', function(event) {
                 if (event.target.id === 'pdfCanvas' && editMode) {
                     handleCanvasClick(event);
                 }
+            });
+
+            // Movimento mouse per il mirino e anteprima testo
+            document.getElementById('pdfViewer').addEventListener('mousemove', function(event) {
+                if (event.target.id === 'pdfCanvas' && editMode) {
+                    handleCanvasMouseMove(event);
+                }
+            });
+
+            // Nascondi mirino e anteprima quando il mouse esce dalla canvas
+            document.getElementById('pdfViewer').addEventListener('mouseleave', function() {
+                document.getElementById('crosshair').style.display = 'none';
+                document.getElementById('textPreview').style.display = 'none';
             });
         }
 
@@ -727,6 +801,11 @@
                 viewer.innerHTML = '';
                 viewer.appendChild(canvas);
 
+                // Calcola il rapporto di scaling per le coordinate
+                const rect = canvas.getBoundingClientRect();
+                canvasScaleX = canvas.width / rect.width;
+                canvasScaleY = canvas.height / rect.height;
+
                 // Applica i testi aggiunti
                 applyTextElements(canvas);
 
@@ -745,7 +824,18 @@
                 ctx.font = `${textElement.fontSize * currentZoom}px ${textElement.fontFamily}`;
                 ctx.fillStyle = textElement.color;
                 ctx.textBaseline = 'top';
-                ctx.fillText(textElement.text, textElement.x * currentZoom, textElement.y * currentZoom);
+                
+                // Applica allineamento
+                let x = textElement.x * currentZoom;
+                if (textElement.textAlign === 'center') {
+                    const textWidth = ctx.measureText(textElement.text).width;
+                    x -= textWidth / 2;
+                } else if (textElement.textAlign === 'right') {
+                    const textWidth = ctx.measureText(textElement.text).width;
+                    x -= textWidth;
+                }
+                
+                ctx.fillText(textElement.text, x, textElement.y * currentZoom);
                 ctx.restore();
             });
         }
@@ -757,11 +847,80 @@
             event.preventDefault();
             event.stopPropagation();
 
+            // Calcolo preciso delle coordinate considerando lo scaling
             const rect = canvas.getBoundingClientRect();
-            const x = (event.clientX - rect.left) / currentZoom;
-            const y = (event.clientY - rect.top) / currentZoom;
+            const x = (event.clientX - rect.left) * canvasScaleX / currentZoom;
+            const y = (event.clientY - rect.top) * canvasScaleY / currentZoom;
 
             addTextAtPosition(x, y);
+        }
+
+        function handleCanvasMouseMove(event) {
+            const canvas = document.getElementById('pdfCanvas');
+            if (!canvas || !editMode) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            // Aggiorna la posizione del mirino
+            const crosshair = document.getElementById('crosshair');
+            crosshair.style.display = 'block';
+            crosshair.style.left = `${event.clientX - 10}px`;
+            crosshair.style.top = `${event.clientY - 10}px`;
+
+            // Aggiorna l'anteprima del testo
+            updateTextPreviewPosition(x, y);
+        }
+
+        function updateTextPreview() {
+            if (!editMode) return;
+
+            const text = document.getElementById('textInput').value.trim();
+            const preview = document.getElementById('textPreview');
+            
+            if (!text) {
+                preview.style.display = 'none';
+                return;
+            }
+
+            const fontSize = parseInt(document.getElementById('fontSize').value);
+            const color = document.getElementById('textColor').value;
+            const fontFamily = document.getElementById('fontFamily').value;
+            
+            preview.textContent = text;
+            preview.style.fontSize = `${fontSize}px`;
+            preview.style.color = color;
+            preview.style.fontFamily = fontFamily;
+        }
+
+        function updateTextPreviewPosition(x, y) {
+            const canvas = document.getElementById('pdfCanvas');
+            const preview = document.getElementById('textPreview');
+            const text = document.getElementById('textInput').value.trim();
+            
+            if (!text) {
+                preview.style.display = 'none';
+                return;
+            }
+
+            // Calcola la posizione considerando l'allineamento
+            const rect = canvas.getBoundingClientRect();
+            const textAlign = document.getElementById('textAlign').value;
+            
+            let left = rect.left + x;
+            let top = rect.top + y;
+            
+            // Aggiusta la posizione in base all'allineamento
+            if (textAlign === 'center') {
+                left -= preview.offsetWidth / 2;
+            } else if (textAlign === 'right') {
+                left -= preview.offsetWidth;
+            }
+            
+            preview.style.left = `${left}px`;
+            preview.style.top = `${top}px`;
+            preview.style.display = 'block';
         }
 
         function addTextAtPosition(x, y) {
@@ -774,6 +933,7 @@
             const fontSize = parseInt(document.getElementById('fontSize').value);
             const color = document.getElementById('textColor').value;
             const fontFamily = document.getElementById('fontFamily').value;
+            const textAlign = document.getElementById('textAlign').value;
 
             const textElement = {
                 id: Date.now(),
@@ -783,7 +943,8 @@
                 text: text,
                 fontSize: fontSize,
                 color: color,
-                fontFamily: fontFamily
+                fontFamily: fontFamily,
+                textAlign: textAlign
             };
 
             textElements.push(textElement);
@@ -798,6 +959,10 @@
             if (canvas) {
                 canvas.classList.remove('text-mode');
             }
+            
+            // Nascondi mirino e anteprima
+            document.getElementById('crosshair').style.display = 'none';
+            document.getElementById('textPreview').style.display = 'none';
             
             // Pulisci il campo testo
             document.getElementById('textInput').value = '';
@@ -816,7 +981,10 @@
                 canvas.classList.add('text-mode');
             }
             
-            showNotification('Clicca sul PDF per posizionare il testo', 'info');
+            // Mostra l'anteprima del testo
+            updateTextPreview();
+            
+            showNotification('Clicca sul PDF per posizionare il testo. Usa il mirino per un posizionamento preciso.', 'info');
         }
 
         function undoLastText() {
@@ -938,5 +1106,5 @@
             }, 3000);
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'975ba1d9245ceda6',t:'MTc1NjI5ODM3Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
