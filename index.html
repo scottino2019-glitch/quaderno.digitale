@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quaderno Digitale</title>
+<title>Quaderno Digitale </title>
 <style>
   body { margin:0; font-family:sans-serif; }
   #toolbar { display:flex; flex-wrap:wrap; gap:5px; padding:5px; background:#333; color:white; }
@@ -32,19 +32,20 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <script>
-/* ====== CONFIGURAZIONE FIREBASE ====== */
+// ====== CONFIGURAZIONE FIREBASE ======
 const firebaseConfig = {
-  apiKey: "TUO_API_KEY",
-  authDomain: "TUO_PROJECT.firebaseapp.com",
-  projectId: "TUO_PROJECT",
-  storageBucket: "TUO_PROJECT.appspot.com",
-  messagingSenderId: "xxxx",
-  appId: "xxxx"
+  apiKey: "AIzaSyCX-Hr0lBUKw5SjdZGF9dc6YgUhUeil8GE",
+  authDomain: "quaderno-digitale.firebaseapp.com",
+  projectId: "quaderno-digitale",
+  storageBucket: "quaderno-digitale.firebasestorage.app",
+  messagingSenderId: "41918751105",
+  appId: "1:41918751105:web:70a3d777241a721103c880"
 };
+
 firebase.initializeApp(firebaseConfig);
 const storage = firebase.storage();
 
-/* ====== VARIABILI GLOBALI ====== */
+// ====== VARIABILI GLOBALI ======
 const viewer = document.getElementById('viewer');
 const fileInput = document.getElementById('fileInput');
 const toggleTextBtn = document.getElementById('toggleTextBtn');
@@ -57,7 +58,7 @@ let currentFile = null;
 let annotations = [];
 let insertMode = false;
 
-/* ====== EVENTI ====== */
+// ====== EVENTI ======
 fileInput.addEventListener('change', async e => {
   const file = e.target.files[0];
   if(!file) return;
@@ -100,7 +101,7 @@ saveBtn.onclick = async () => {
   alert('PDF e annotazioni salvati su Firebase!');
 };
 
-/* ====== FUNZIONI PDF ====== */
+// ====== FUNZIONI PDF ======
 async function loadPDF(data) {
   pdfDoc = await pdfjsLib.getDocument({data}).promise;
   viewer.innerHTML = '';
@@ -129,7 +130,7 @@ async function loadPDF(data) {
   }
 }
 
-/* ====== RENDER ANNOTAZIONI ====== */
+// ====== RENDER ANNOTAZIONI ======
 function renderAnnotations() {
   document.querySelectorAll('.annotation').forEach(a => a.remove());
   annotations.forEach(a => {
