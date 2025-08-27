@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDF Editor Mobile con Supabase</title>
+<title>Quaderno Digitale</title>
 <style>
   body { margin:0; font-family:sans-serif; }
   #toolbar { display:flex; flex-wrap:wrap; gap:5px; padding:5px; background:#333; color:white; }
@@ -26,13 +26,23 @@
 
 <div id="viewer"></div>
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.29.0/dist/supabase.min.js"></script>
+
 <script>
-/* ====== CONFIGURAZIONE SUPABASE ====== */
-const SUPABASE_URL = 'https://TUO_PROJECT.supabase.co';
-const SUPABASE_KEY = 'TUO_ANON_KEY';
-const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+/* ====== CONFIGURAZIONE FIREBASE ====== */
+const firebaseConfig = {
+  apiKey: "TUO_API_KEY",
+  authDomain: "TUO_PROJECT.firebaseapp.com",
+  projectId: "TUO_PROJECT",
+  storageBucket: "TUO_PROJECT.appspot.com",
+  messagingSenderId: "xxxx",
+  appId: "xxxx"
+};
+firebase.initializeApp(firebaseConfig);
+const storage = firebase.storage();
 
 /* ====== VARIABILI GLOBALI ====== */
 const viewer = document.getElementById('viewer');
@@ -77,23 +87,25 @@ closeBtn.onclick = () => {
 
 saveBtn.onclick = async () => {
   if(!currentFile) return alert('Nessun PDF aperto!');
-  // 1) carica PDF su Supabase
-  const { data, error } = await supabase.storage
-    .from('pdfs')
-    .upload(currentFile.name, currentFile, { upsert: true });
-  if(error) return alert('Errore upload PDF: '+error.message);
-
-  // 2) salva annotazioni come JSON
-  const annData = new Blob([JSON.stringify(annotations)], {type:'application/json'});
-  await supabase.storage.from('pdfs').upload(currentFile.name+'.annotations.json', annData, { upsert:true });
-  alert('PDF e annotazioni salvati su Supabase!');
+  
+  // Upload PDF
+  const pdfRef = storage.ref('pdfs/' + currentFile.name);
+  await pdfRef.put(currentFile);
+  
+  // Upload annotazioni
+  const annData = new Blob([JSON.stringify(annotations)], { type: 'application/json' });
+  const annRef = storage.ref('pdfs/' + currentFile.name + '.annotations.json');
+  await annRef.put(annData);
+  
+  alert('PDF e annotazioni salvati su Firebase!');
 };
 
 /* ====== FUNZIONI PDF ====== */
 async function loadPDF(data) {
   pdfDoc = await pdfjsLib.getDocument({data}).promise;
   viewer.innerHTML = '';
-  annotations = []; // puliamo annotazioni attuali
+  annotations = [];
+  
   for(let i=1;i<=pdfDoc.numPages;i++){
     const page = await pdfDoc.getPage(i);
     const viewport = page.getViewport({scale:1.5});
@@ -110,8 +122,7 @@ async function loadPDF(data) {
       const y = e.clientY - rect.top;
       const text = prompt('Inserisci testo:');
       if(!text) return;
-      const note = { page: i, x, y, text };
-      annotations.push(note);
+      annotations.push({ page: i, x, y, text });
       renderAnnotations();
     });
     viewer.appendChild(canvas);
@@ -120,7 +131,6 @@ async function loadPDF(data) {
 
 /* ====== RENDER ANNOTAZIONI ====== */
 function renderAnnotations() {
-  // rimuovi vecchie
   document.querySelectorAll('.annotation').forEach(a => a.remove());
   annotations.forEach(a => {
     const canvas = document.querySelector(`canvas[data-page="${a.page}"]`);
