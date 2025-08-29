@@ -402,6 +402,23 @@
             display: none;
         }
 
+        /* Nuovi stili per i controlli di salvataggio */
+        .save-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .save-input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .save-input-group input {
+            flex: 1;
+        }
+
         @media (max-width: 768px) {
             body {
                 padding: 10px;
@@ -533,6 +550,10 @@
             .notification.show {
                 transform: translateY(0);
             }
+
+            .save-input-group {
+                flex-direction: column;
+            }
         }
 
         @media (max-width: 480px) {
@@ -600,6 +621,22 @@
                     </button>
                 </div>
 
+                <!-- Sezione Salvataggio -->
+                <div class="tool-section">
+                    <h3>💾 Salva Progetto</h3>
+                    <div class="save-controls">
+                        <div class="save-input-group">
+                            <input type="text" id="fileName" placeholder="Nome file">
+                            <button class="btn btn-success" onclick="salvaFile()">Salva</button>
+                        </div>
+                        <button class="btn btn-primary" onclick="nuovoFile()">Nuovo</button>
+                        <button class="btn btn-danger" onclick="cancellaFile()">Elimina</button>
+                        <select id="fileList" onchange="apriFile()">
+                            <option value="">-- Seleziona file --</option>
+                        </select>
+                    </div>
+                </div>
+
                 <!-- Sezione Testo -->
                 <div class="tool-section">
                     <h3>✏️ Aggiungi Testo</h3>
@@ -649,14 +686,7 @@
                         ↶ Annulla Ultimo
                     </button>
                 </div>
-<!-- SEZIONE SALVATAGGI (AGGIUNTA QUI) -->
-  <button class="btn btn-success onclick="salvaFile()">💾 Salva</button>
 
-      <button class="btn btn-danger onclick="cancellaFile()">🗑️ Elimina</button>
-
-      <select id="fileList" onchange="apriFile()">
-        <option value="">-- Seleziona file --</option>
-      </select>
                 <!-- Lista Testi Aggiunti -->
                 <div class="tool-section">
                     <h3>📝 Testi Aggiunti</h3>
@@ -713,7 +743,151 @@
         // Inizializzazione
         document.addEventListener('DOMContentLoaded', function() {
             setupEventListeners();
+            aggiornaLista();
         });
+
+        // Funzioni per la gestione dei file (dinamica di salvataggio)
+        function getFiles() {
+            return JSON.parse(localStorage.getItem("pdfFiles")) || {};
+        }
+
+        function aggiornaLista() {
+            const files = getFiles();
+            const fileList = document.getElementById("fileList");
+            fileList.innerHTML = '<option value="">-- Seleziona file --</option>';
+            Object.keys(files).forEach(name => {
+                const opt = document.createElement("option");
+                opt.value = name;
+                opt.textContent = name;
+                fileList.appendChild(opt);
+            });
+        }
+
+        function salvaFile() {
+            const name = document.getElementById("fileName").value.trim();
+            if (!name) { 
+                showNotification("Inserisci un nome file!", "error"); 
+                return; 
+            }
+            
+            const files = getFiles();
+            
+            // Salva i dati del progetto
+            files[name] = {
+                textElements: textElements,
+                pdfData: originalPDFData ? Array.from(new Uint8Array(originalPDFData)) : null,
+                lastModified: new Date().toISOString()
+            };
+            
+            localStorage.setItem("pdfFiles", JSON.stringify(files));
+            aggiornaLista();
+            showNotification(`File "${name}" salvato con successo!`, "success");
+        }
+
+        function apriFile() {
+            const name = document.getElementById("fileList").value;
+            if (!name) return;
+            
+            const files = getFiles();
+            const fileData = files[name];
+            
+            if (!fileData) {
+                showNotification("File non trovato!", "error");
+                return;
+            }
+            
+            document.getElementById("fileName").value = name;
+            
+            // Carica i dati del progetto
+            textElements = fileData.textElements || [];
+            
+            if (fileData.pdfData) {
+                // Ricostruisci l'array buffer dai dati salvati
+                originalPDFData = new Uint8Array(fileData.pdfData).buffer;
+                
+                // Ricarica il PDF
+                pdfjsLib.getDocument(originalPDFData).promise.then(function(pdf) {
+                    currentPDF = pdf;
+                    totalPages = currentPDF.numPages;
+                    currentPage = 1;
+                    
+                    renderPage(currentPage);
+                    
+                    document.getElementById('pageControls').style.display = 'flex';
+                    document.getElementById('addTextBtn').disabled = false;
+                    document.getElementById('closeBtn').style.display = 'block';
+                    
+                    updatePageInfo();
+                    updateTextList();
+                    showNotification(`File "${name}" caricato con successo!`, "success");
+                }).catch(function(error) {
+                    console.error('Errore nel caricamento del PDF salvato:', error);
+                    showNotification('Errore nel caricamento del PDF salvato', 'error');
+                });
+            } else {
+                // Se non c'è un PDF, mostra solo i testi
+                updateTextList();
+                showNotification(`Progetto "${name}" caricato (senza PDF originale)`, "info");
+            }
+        }
+
+        function nuovoFile() {
+            if (textElements.length > 0 || originalPDFData) {
+                if (!confirm('Sei sicuro di voler creare un nuovo file? I cambiamenti non salvati andranno persi.')) {
+                    return;
+                }
+            }
+            
+            // Reset di tutte le variabili
+            currentPDF = null;
+            currentPage = 1;
+            totalPages = 0;
+            textElements = [];
+            editMode = false;
+            originalPDFData = null;
+
+            // Reset dell'interfaccia
+            document.getElementById('pdfViewer').innerHTML = `
+                <div class="empty-state">
+                    <div class="icon">📄</div>
+                    <h3>Carica un PDF per iniziare</h3>
+                    <p>Seleziona un file PDF dal tuo computer per iniziare ad aggiungere testo</p>
+                </div>
+            `;
+            
+            document.getElementById('pageControls').style.display = 'none';
+            document.getElementById('addTextBtn').disabled = true;
+            document.getElementById('closeBtn').style.display = 'none';
+            document.getElementById('fileInput').value = '';
+            document.getElementById('textInput').value = '';
+            document.getElementById('fileName').value = '';
+            
+            updateTextList();
+            showNotification('Nuovo progetto creato', 'info');
+        }
+
+        function cancellaFile() {
+            const name = document.getElementById("fileName").value.trim();
+            if (!name) { 
+                showNotification("Seleziona un file da eliminare!", "error"); 
+                return; 
+            }
+            
+            const files = getFiles();
+            if (files[name]) {
+                if (!confirm(`Sei sicuro di voler eliminare il file "${name}"?`)) {
+                    return;
+                }
+                
+                delete files[name];
+                localStorage.setItem("pdfFiles", JSON.stringify(files));
+                aggiornaLista();
+                nuovoFile();
+                showNotification(`File "${name}" eliminato!`, "success");
+            } else {
+                showNotification("File non trovato!", "error");
+            }
+        }
 
         function setupEventListeners() {
             // File input
@@ -730,7 +904,7 @@
             document.getElementById('textColor').addEventListener('input', updateTextPreview);
             document.getElementById('fontFamily').addEventListener('change', updateTextPreview);
             document.getElementById('textAlign').addEventListener('change', updateTextPreview);
-
+            
             // Canvas click per aggiungere testo
             document.getElementById('pdfViewer').addEventListener('click', function(event) {
                 if (event.target.id === 'pdfCanvas' && editMode) {
@@ -1112,78 +1286,6 @@
                 }, 300);
             }, 3000);
         }
-/* === GESTIONE SALVATAGGI === */
-
-// Recupera i file salvati
-function getSavedFiles() {
-  return JSON.parse(localStorage.getItem("pdfEdits")) || {};
-}
-
-// Aggiorna la lista file (puoi creare un <select> in sidebar)
-function updateFileList() {
-  const files = getSavedFiles();
-  const fileList = document.getElementById("fileList");
-  if (!fileList) return; // se non esiste la select, esci
-
-  fileList.innerHTML = '<option value="">-- Seleziona file --</option>';
-  Object.keys(files).forEach(name => {
-    const opt = document.createElement("option");
-    opt.value = name;
-    opt.textContent = name;
-    fileList.appendChild(opt);
-  });
-}
-// Recupera i file
-    function getFiles() {
-      return JSON.parse(localStorage.getItem("files")) || {};
-    }
-
-    // Aggiorna lista file
-    function aggiornaLista() {
-      const files = getFiles();
-      const fileList = document.getElementById("fileList");
-      fileList.innerHTML = '<option value="">-- Seleziona file --</option>';
-      Object.keys(files).forEach(name => {
-        const opt = document.createElement("option");
-        opt.value = name;
-        opt.textContent = name;
-        fileList.appendChild(opt);
-      });
-    }
-
-    // Salva file
-    function salvaFile() {
-      const name = document.getElementById("fileName").value.trim();
-      if (!name) { alert("Inserisci un nome file!"); return; }
-      const files = getFiles();
-      files[name] = document.getElementById("editor").innerHTML; // salva HTML
-      localStorage.setItem("files", JSON.stringify(files));
-      aggiornaLista();
-      alert("File salvato!");
-    }
-
-    // Apri file
-    function apriFile() {
-      const name = document.getElementById("fileList").value;
-      if (!name) return;
-      const files = getFiles();
-      document.getElementById("fileName").value = name;
-      document.getElementById("editor").innerHTML = files[name] || "";
-    }
-
-// Cancella file
-    function cancellaFile() {
-      const name = document.getElementById("fileName").value.trim();
-      if (!name) { alert("Seleziona un file da eliminare!"); return; }
-      const files = getFiles();
-      if (files[name]) {
-        delete files[name];
-        localStorage.setItem("files", JSON.stringify(files));
-        aggiornaLista();
-        nuovoFile();
-        alert("File eliminato!");
-      }
-    }
     </script>
 </body>
 </html>
