@@ -649,6 +649,16 @@
                         ↶ Annulla Ultimo
                     </button>
                 </div>
+<!-- SEZIONE SALVATAGGI (AGGIUNTA QUI) -->
+        <div class="tool-section">
+          <h3>💾 Salvataggi</h3>
+          <button class="btn btn-success" onclick="saveFile()">Salva</button>
+          <button class="btn btn-danger" onclick="deleteFile()">Elimina</button>
+          <select id="fileList" onchange="openFile()" style="width:100%;margin-top:8px;">
+            <option value="">-- Seleziona file --</option>
+          </select>
+        </div>
+
 
                 <!-- Lista Testi Aggiunti -->
                 <div class="tool-section">
@@ -1105,6 +1115,72 @@
                 }, 300);
             }, 3000);
         }
+/* === GESTIONE SALVATAGGI === */
+
+// Recupera i file salvati
+function getSavedFiles() {
+  return JSON.parse(localStorage.getItem("pdfEdits")) || {};
+}
+
+// Aggiorna la lista file (puoi creare un <select> in sidebar)
+function updateFileList() {
+  const files = getSavedFiles();
+  const fileList = document.getElementById("fileList");
+  if (!fileList) return; // se non esiste la select, esci
+
+  fileList.innerHTML = '<option value="">-- Seleziona file --</option>';
+  Object.keys(files).forEach(name => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    fileList.appendChild(opt);
+  });
+}
+
+// Salva i testi aggiunti
+function saveFile() {
+  const name = prompt("Inserisci un nome per il file:");
+  if (!name) return;
+
+  const files = getSavedFiles();
+  files[name] = textElements; // salva tutti gli elementi di testo
+  localStorage.setItem("pdfEdits", JSON.stringify(files));
+  updateFileList();
+  showNotification("File salvato!", "success");
+}
+
+// Carica i testi aggiunti
+function openFile() {
+  const name = document.getElementById("fileList").value;
+  if (!name) return;
+
+  const files = getSavedFiles();
+  if (files[name]) {
+    textElements = files[name];
+    renderPage(currentPage);
+    updateTextList();
+    showNotification("File caricato!", "info");
+  }
+}
+
+// Cancella un file salvato
+function deleteFile() {
+  const name = document.getElementById("fileList").value;
+  if (!name) return;
+
+  const files = getSavedFiles();
+  if (files[name]) {
+    delete files[name];
+    localStorage.setItem("pdfEdits", JSON.stringify(files));
+    updateFileList();
+    showNotification("File eliminato!", "error");
+  }
+}
+
+// Inizializza lista al caricamento
+document.addEventListener("DOMContentLoaded", updateFileList);
+
+
     </script>
 </body>
 </html>
