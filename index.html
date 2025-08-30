@@ -649,6 +649,24 @@
                         ↶ Annulla Ultimo
                     </button>
                 </div>
+<!-- Sezione Salvataggi -->
+<div class="tool-section">
+  <h3>💾 Salvataggi</h3>
+  <div class="input-group">
+    <label>Nome salvataggio:</label>
+    <input type="text" id="saveName" placeholder="Inserisci un nome">
+  </div>
+  <button class="btn btn-success" onclick="salvaLavoro()">💾 Salva testi</button>
+  
+  <div class="input-group">
+    <label>Apri lavoro:</label>
+    <select id="lavoriList" onchange="apriLavoro()">
+      <option value="">-- Seleziona --</option>
+    </select>
+  </div>
+  <button class="btn btn-danger" onclick="cancellaLavoro()">🗑️ Elimina</button>
+</div>
+
 
                 <!-- Lista Testi Aggiunti -->
                 <div class="tool-section">
@@ -1105,6 +1123,74 @@
                 }, 300);
             }, 3000);
         }
+// --- Salvataggi SOLO TESTI (senza PDF) ---
+function getLavori() {
+  return JSON.parse(localStorage.getItem("lavoriPDF")) || {};
+}
+
+function aggiornaListaLavori() {
+  const lavori = getLavori();
+  const sel = document.getElementById("lavoriList");
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- Seleziona --</option>';
+  Object.keys(lavori).forEach(n => {
+    let o = document.createElement("option");
+    o.value = n;
+    o.textContent = n;
+    sel.appendChild(o);
+  });
+}
+
+function salvaLavoro() {
+  const nome = document.getElementById("saveName").value.trim();
+  if (!nome) {
+    showNotification("Inserisci un nome!", "error");
+    return;
+  }
+  if (textElements.length === 0) {
+    showNotification("Nessun testo da salvare!", "error");
+    return;
+  }
+  const lavori = getLavori();
+  lavori[nome] = textElements;
+  localStorage.setItem("lavoriPDF", JSON.stringify(lavori));
+  aggiornaListaLavori();
+  showNotification("Lavoro salvato!", "success");
+}
+
+function apriLavoro() {
+  const nome = document.getElementById("lavoriList").value;
+  if (!nome) return;
+  const lavori = getLavori();
+  if (!lavori[nome]) return;
+  if (!currentPDF) {
+    showNotification("Carica prima il PDF originale!", "error");
+    return;
+  }
+  textElements = lavori[nome];
+  renderPage(currentPage);
+  updateTextList();
+  showNotification(`Lavoro "${nome}" caricato!`, "success");
+}
+
+function cancellaLavoro() {
+  const nome = document.getElementById("saveName").value.trim() || document.getElementById("lavoriList").value;
+  if (!nome) {
+    showNotification("Seleziona un salvataggio!", "error");
+    return;
+  }
+  const lavori = getLavori();
+  if (lavori[nome]) {
+    delete lavori[nome];
+    localStorage.setItem("lavoriPDF", JSON.stringify(lavori));
+    aggiornaListaLavori();
+    showNotification(`Lavoro "${nome}" eliminato!`, "success");
+  }
+}
+
+// Inizializza menu all’avvio
+document.addEventListener("DOMContentLoaded", aggiornaListaLavori);
+
     </script>
 </body>
 </html>
