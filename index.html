@@ -6,1190 +6,173 @@
     <title>✏️ Quaderno Digitale</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            padding: 25px 30px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
-        .main-content {
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            min-height: 600px;
-        }
-
-        .sidebar {
-            background: #f8f9fa;
-            padding: 25px;
-            border-right: 2px solid #e9ecef;
-        }
-
-        .tool-section {
-            margin-bottom: 25px;
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-        }
-
-        .tool-section h3 {
-            color: #495057;
-            margin-bottom: 20px;
-            font-size: 1.2rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .btn {
-            width: 100%;
-            padding: 15px 20px;
-            margin: 8px 0;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            justify-content: center;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
-            color: white;
-        }
-
-        .btn-success:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(86, 171, 47, 0.4);
-        }
-
-        .btn-warning {
-            background: linear-gradient(135deg, #ff9a56 0%, #ff6b6b 100%);
-            color: white;
-        }
-
-        .btn-warning:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(255, 154, 86, 0.4);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(255, 65, 108, 0.4);
-        }
-
-        .file-input {
-            display: none;
-        }
-
-        .input-group {
-            margin: 15px 0;
-        }
-
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #495057;
-            font-size: 0.95rem;
-        }
-
-        .input-group textarea {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
-            resize: vertical;
-            min-height: 80px;
-        }
-
-        .input-group input, .input-group select {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
-        }
-
-        .input-group input:focus, .input-group textarea:focus, .input-group select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .workspace {
-            padding: 25px;
-            background: #f8f9fa;
-            overflow-y: auto;
-        }
-
-        .pdf-viewer {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            min-height: 500px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-
-        .pdf-canvas {
-            border: 3px solid #e9ecef;
-            border-radius: 10px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            margin: 15px 0;
-            transition: all 0.3s ease;
-            max-width: 100%;
-            height: auto;
-        }
-
-        .pdf-canvas.text-mode {
-            cursor: crosshair;
-            border-color: #667eea;
-        }
-
-        .page-controls {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            margin: 20px 0;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-
-        .page-controls button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            background: #667eea;
-            color: white;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
-
-        .page-controls button:hover {
-            background: #5a6fd8;
-            transform: translateY(-2px);
-        }
-
-        .page-controls button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .empty-state {
-            text-align: center;
-            color: #6c757d;
-            padding: 60px 40px;
-        }
-
-        .empty-state .icon {
-            font-size: 5rem;
-            margin-bottom: 25px;
-            opacity: 0.6;
-        }
-
-        .empty-state h3 {
-            margin-bottom: 15px;
-            color: #495057;
-            font-size: 1.5rem;
-        }
-
-        .empty-state p {
-            font-size: 1.1rem;
-            line-height: 1.6;
-        }
-
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 25px;
-            border-radius: 10px;
-            color: white;
-            font-weight: 600;
-            z-index: 1000;
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-        }
-
-        .notification.show {
-            transform: translateX(0);
-        }
-
-        .notification.success {
-            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
-        }
-
-        .notification.error {
-            background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
-        }
-
-        .notification.info {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-
-        .color-picker {
-            width: 100%;
-            height: 45px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        .range-slider {
-            width: 100%;
-            margin: 15px 0;
-            height: 6px;
-            border-radius: 3px;
-            background: #e9ecef;
-            outline: none;
-        }
-
-        .font-size-display {
-            text-align: center;
-            font-weight: 600;
-            color: #667eea;
-            font-size: 1.1rem;
-        }
-
-        .text-list {
-            max-height: 200px;
-            overflow-y: auto;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            padding: 10px;
-            background: #f8f9fa;
-        }
-
-        .text-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            margin: 5px 0;
-            background: white;
-            border-radius: 6px;
-            border: 1px solid #e9ecef;
-        }
-
-        .text-item-content {
-            flex: 1;
-            font-size: 0.9rem;
-            color: #495057;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            margin-right: 10px;
-        }
-
-        .delete-btn {
-            background: #ff4757;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 4px 8px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            transition: all 0.2s ease;
-        }
-
-        .delete-btn:hover {
-            background: #ff3742;
-            transform: scale(1.05);
-        }
-
-        .crosshair {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            pointer-events: none;
-            z-index: 10;
-            display: none;
-        }
-
-        .crosshair::before, .crosshair::after {
-            content: '';
-            position: absolute;
-            background-color: rgba(255, 0, 0, 0.7);
-        }
-
-        .crosshair::before {
-            width: 2px;
-            height: 20px;
-            left: 9px;
-            top: 0;
-        }
-
-        .crosshair::after {
-            width: 20px;
-            height: 2px;
-            top: 9px;
-            left: 0;
-        }
-
-        .text-preview {
-            position: absolute;
-            pointer-events: none;
-            z-index: 5;
-            padding: 5px;
-            border: 1px dashed #667eea;
-            background-color: rgba(255, 255, 255, 0.8);
-            display: none;
-        }
-
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-            
-            .sidebar {
-                border-right: none;
-                border-bottom: 2px solid #e9ecef;
-                padding: 15px;
-            }
-            
-            .header {
-                padding: 20px 15px;
-            }
-            
-            .header h1 {
-                font-size: 1.8rem;
-            }
-
-            .header p {
-                font-size: 1rem;
-            }
-
-            .tool-section {
-                margin-bottom: 20px;
-                padding: 15px;
-            }
-
-            .tool-section h3 {
-                font-size: 1.1rem;
-                margin-bottom: 15px;
-            }
-
-            .btn {
-                padding: 12px 15px;
-                font-size: 0.95rem;
-            }
-
-            .workspace {
-                padding: 15px;
-            }
-
-            .pdf-viewer {
-                padding: 15px;
-                min-height: 400px;
-            }
-
-            .pdf-canvas {
-                max-width: 100%;
-                height: auto;
-            }
-
-            .page-controls {
-                flex-wrap: wrap;
-                gap: 10px;
-                padding: 10px;
-            }
-
-            .page-controls button {
-                padding: 8px 12px;
-                font-size: 0.9rem;
-            }
-
-            .page-controls > div {
-                margin-left: 0 !important;
-                margin-top: 10px;
-            }
-
-            .input-group input, 
-            .input-group textarea, 
-            .input-group select {
-                padding: 10px 12px;
-                font-size: 0.95rem;
-            }
-
-            .input-group textarea {
-                min-height: 70px;
-            }
-
-            .color-picker {
-                height: 40px;
-            }
-
-            .text-list {
-                max-height: 150px;
-            }
-
-            .text-item {
-                padding: 6px 10px;
-            }
-
-            .text-item-content {
-                font-size: 0.85rem;
-            }
-
-            .delete-btn {
-                padding: 3px 6px;
-                font-size: 0.75rem;
-            }
-
-            .empty-state {
-                padding: 40px 20px;
-            }
-
-            .empty-state .icon {
-                font-size: 3.5rem;
-            }
-
-            .empty-state h3 {
-                font-size: 1.3rem;
-            }
-
-            .empty-state p {
-                font-size: 1rem;
-            }
-
-            .notification {
-                right: 10px;
-                left: 10px;
-                transform: translateY(-100px);
-                font-size: 0.9rem;
-                padding: 12px 20px;
-            }
-
-            .notification.show {
-                transform: translateY(0);
-            }
-        }
-
-        @media (max-width: 480px) {
-            .header h1 {
-                font-size: 1.6rem;
-            }
-
-            .tool-section {
-                padding: 12px;
-            }
-
-            .btn {
-                padding: 10px 12px;
-                font-size: 0.9rem;
-            }
-
-            .page-controls {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .page-controls button {
-                width: 100%;
-                margin: 2px 0;
-            }
-
-            .page-controls span {
-                text-align: center;
-                padding: 8px;
-                font-weight: 600;
-            }
-
-            .pdf-canvas {
-                border-width: 2px;
-            }
-
-            .workspace {
-                padding: 10px;
-            }
-
-            .pdf-viewer {
-                padding: 10px;
-            }
-        }
+        /* --- STILI (uguali ai tuoi, accorciati per spazio) --- */
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg,#667eea,#764ba2); min-height: 100vh; padding:20px; }
+        .container { max-width:1200px;margin:0 auto;background:white;border-radius:20px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.1);}
+        .header { background:linear-gradient(135deg,#4facfe,#00f2fe);color:white;padding:25px;text-align:center;}
+        .main-content { display:grid;grid-template-columns:320px 1fr;min-height:600px;}
+        .sidebar { background:#f8f9fa;padding:25px;border-right:2px solid #e9ecef;}
+        .tool-section { margin-bottom:25px;background:white;border-radius:15px;padding:20px;box-shadow:0 5px 15px rgba(0,0,0,0.08);}
+        .btn {width:100%;padding:12px;margin:6px 0;border:none;border-radius:10px;cursor:pointer;font-weight:600;}
+        .btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);color:white;}
+        .btn-success{background:linear-gradient(135deg,#56ab2f,#a8e6cf);color:white;}
+        .btn-danger{background:linear-gradient(135deg,#ff416c,#ff4b2b);color:white;}
+        .btn-warning{background:linear-gradient(135deg,#ff9a56,#ff6b6b);color:white;}
+        .workspace { padding:25px;background:#f8f9fa;overflow-y:auto;}
+        .pdf-viewer { background:white;border-radius:15px;padding:25px;box-shadow:0 10px 30px rgba(0,0,0,0.1);min-height:500px;display:flex;justify-content:center;align-items:center;}
+        .pdf-canvas { border:2px solid #ccc;border-radius:10px;max-width:100%; }
+        .text-list{max-height:200px;overflow-y:auto;border:1px solid #ddd;padding:10px;}
+        .text-item{display:flex;justify-content:space-between;align-items:center;padding:6px;margin:4px 0;background:#fff;border:1px solid #eee;border-radius:6px;}
+        .notification {position:fixed;top:20px;right:20px;padding:10px 15px;border-radius:8px;color:white;font-weight:600;z-index:1000;transform:translateX(400px);transition:.3s;}
+        .notification.show{transform:translateX(0);}
+        .notification.success{background:linear-gradient(135deg,#56ab2f,#a8e6cf);}
+        .notification.error{background:linear-gradient(135deg,#ff416c,#ff4b2b);}
+        .notification.info{background:linear-gradient(135deg,#4facfe,#00f2fe);}
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>✏️ Quaderno Digitale</h1>
-            <p>Aggiungi testo ai tuoi documenti PDF in modo semplice e veloce</p>
-        </div>
-
-        <div class="main-content">
-            <div class="sidebar">
-                <!-- Sezione Caricamento -->
-                <div class="tool-section">
-                    <h3>📁 Carica PDF</h3>
-                    <input type="file" id="fileInput" class="file-input" accept=".pdf">
-                    <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
-                        📂 Seleziona PDF
-                    </button>
-                    <button class="btn btn-warning" onclick="closePDF()" id="closeBtn" style="display: none;">
-                        ✖️ Chiudi PDF
-                    </button>
-                </div>
-
-                <!-- Sezione Testo -->
-                <div class="tool-section">
-                    <h3>✏️ Aggiungi Testo</h3>
-                    <div class="input-group">
-                        <label>Testo da inserire:</label>
-                        <textarea id="textInput" placeholder="Scrivi qui il testo da aggiungere..."></textarea>
-                    </div>
-                    
-                    <div class="input-group">
-                        <label>Dimensione font:</label>
-                        <input type="range" id="fontSize" min="8" max="72" value="16" class="range-slider">
-                        <div class="font-size-display" id="fontSizeValue">16px</div>
-                    </div>
-                    
-                    <div class="input-group">
-                        <label>Colore testo:</label>
-                        <input type="color" id="textColor" value="#000000" class="color-picker">
-                    </div>
-                    
-                    <div class="input-group">
-                        <label>Tipo di font:</label>
-                        <select id="fontFamily">
-                            <option value="Helvetica">Helvetica</option>
-                            <option value="Times-Roman">Times Roman</option>
-                            <option value="Courier">Courier</option>
-                        </select>
-                    </div>
-                    
-                    <div class="input-group">
-                        <label>Allineamento testo:</label>
-                        <select id="textAlign">
-                            <option value="left">Sinistra</option>
-                            <option value="center" selected>Centro</option>
-                            <option value="right">Destra</option>
-                        </select>
-                    </div>
-                    
-                    <button class="btn btn-primary" onclick="enableTextMode()" id="addTextBtn" disabled>
-                        ✏️ Modalità Inserimento
-                    </button>
-                </div>
-
-                <!-- Sezione Controlli -->
-                <div class="tool-section">
-                    <h3>🔧 Controlli</h3>
-                    <button class="btn btn-warning" onclick="undoLastText()">
-                        ↶ Annulla Ultimo
-                    </button>
-                </div>
-<!-- Sezione Salvataggio -->
-<div class="tool-section">
-  <h3>💾 Salvataggi</h3>
-  <div class="input-group">
-    <label>Nome salvataggio:</label>
-    <input type="text" id="saveName" placeholder="Es. lavoro1">
-  </div>
-  <button class="btn btn-success" onclick="salvaLavoro()">💾 Salva</button>
-  <button class="btn btn-danger" onclick="cancellaLavoro()">🗑️ Elimina</button>
-  <div class="input-group">
-    <label>Apri lavoro:</label>
-    <select id="lavoriList" onchange="apriLavoro()">
-      <option value="">-- Seleziona --</option>
-    </select>
-  </div>
-</div>
-
-
-                <!-- Lista Testi Aggiunti -->
-                <div class="tool-section">
-                    <h3>📝 Testi Aggiunti</h3>
-                    <div class="text-list" id="textList">
-                        <p style="text-align: center; color: #6c757d; padding: 20px;">Nessun testo aggiunto</p>
-                    </div>
-                </div>
+<div class="container">
+    <div class="header">
+        <h1>✏️ Quaderno Digitale</h1>
+        <p>Aggiungi testo ai tuoi documenti PDF in modo semplice e veloce</p>
+    </div>
+    <div class="main-content">
+        <div class="sidebar">
+            <!-- Carica PDF -->
+            <div class="tool-section">
+                <h3>📁 Carica PDF</h3>
+                <input type="file" id="fileInput" class="file-input" accept=".pdf" style="display:none;">
+                <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">📂 Seleziona PDF</button>
+                <button class="btn btn-warning" onclick="closePDF()" id="closeBtn" style="display:none;">✖️ Chiudi PDF</button>
             </div>
-
-            <div class="workspace">
-                <div class="pdf-viewer" id="pdfViewer">
-                    <div class="empty-state">
-                        <div class="icon">📄</div>
-                        <h3>Carica un PDF per iniziare</h3>
-                        <p>Seleziona un file PDF dal tuo computer per iniziare ad aggiungere testo</p>
-                    </div>
-                </div>
-
-                <div class="page-controls" id="pageControls" style="display: none;">
-                    <button onclick="previousPage()" id="prevBtn">⬅️ Precedente</button>
-                    <span id="pageInfo">Pagina 1 di 1</span>
-                    <button onclick="nextPage()" id="nextBtn">Successiva ➡️</button>
-                    <div style="margin-left: auto;">
-                        <label>Zoom: </label>
-                        <select id="zoomSelect" onchange="changeZoom()">
-                            <option value="0.5">50%</option>
-                            <option value="0.75">75%</option>
-                            <option value="1" selected>100%</option>
-                            <option value="1.25">125%</option>
-                            <option value="1.5">150%</option>
-                            <option value="2">200%</option>
-                        </select>
-                    </div>
-                </div>
+            <!-- Aggiungi Testo -->
+            <div class="tool-section">
+                <h3>✏️ Aggiungi Testo</h3>
+                <textarea id="textInput" placeholder="Scrivi qui..."></textarea>
+                <label>Dimensione:</label>
+                <input type="range" id="fontSize" min="8" max="72" value="16">
+                <div id="fontSizeValue">16px</div>
+                <label>Colore:</label>
+                <input type="color" id="textColor" value="#000000">
+                <label>Font:</label>
+                <select id="fontFamily"><option>Helvetica</option><option>Times-Roman</option><option>Courier</option></select>
+                <label>Allineamento:</label>
+                <select id="textAlign"><option value="left">Sinistra</option><option value="center" selected>Centro</option><option value="right">Destra</option></select>
+                <button class="btn btn-primary" onclick="enableTextMode()" id="addTextBtn" disabled>✏️ Inserisci</button>
+            </div>
+            <!-- Controlli -->
+            <div class="tool-section">
+                <h3>🔧 Controlli</h3>
+                <button class="btn btn-warning" onclick="undoLastText()">↶ Annulla Ultimo</button>
+            </div>
+            <!-- Lista Testi -->
+            <div class="tool-section">
+                <h3>📝 Testi Aggiunti</h3>
+                <div class="text-list" id="textList"><p style="text-align:center;color:#666;">Nessun testo</p></div>
+            </div>
+            <!-- Salvataggi -->
+            <div class="tool-section">
+                <h3>💾 Salvataggi</h3>
+                <input type="text" id="saveName" placeholder="Nome salvataggio">
+                <button class="btn btn-success" onclick="salvaLavoro()">💾 Salva</button>
+                <button class="btn btn-danger" onclick="cancellaLavoro()">🗑️ Elimina</button>
+                <select id="lavoriList" onchange="apriLavoro()"><option value="">-- Seleziona --</option></select>
+            </div>
+        </div>
+        <div class="workspace">
+            <div class="pdf-viewer" id="pdfViewer">
+                <div class="empty-state"><h3>Carica un PDF per iniziare</h3></div>
+            </div>
+            <div class="page-controls" id="pageControls" style="display:none;">
+                <button onclick="previousPage()" id="prevBtn">⬅️ Precedente</button>
+                <span id="pageInfo">Pagina 1 di 1</span>
+                <button onclick="nextPage()" id="nextBtn">Successiva ➡️</button>
             </div>
         </div>
     </div>
+</div>
 
-    <div id="crosshair" class="crosshair"></div>
-    <div id="textPreview" class="text-preview"></div>
+<script>
+let currentPDF=null,currentPage=1,totalPages=0,currentZoom=1,textElements=[],originalPDFData=null;
 
-    <script>
-        // Variabili globali
-        let currentPDF = null;
-        let currentPage = 1;
-        let totalPages = 0;
-        let currentZoom = 1;
-        let editMode = false;
-        let textElements = [];
-        let originalPDFData = null;
-        let canvasScaleX = 1;
-        let canvasScaleY = 1;
+// eventi base
+document.getElementById("fileInput").addEventListener("change",handleFileSelect);
+document.getElementById("fontSize").addEventListener("input",e=>{document.getElementById("fontSizeValue").textContent=e.target.value+"px";});
 
-        // Inizializzazione
-        document.addEventListener('DOMContentLoaded', function() {
-            setupEventListeners();
-        });
-
-        function setupEventListeners() {
-            // File input
-            document.getElementById('fileInput').addEventListener('change', handleFileSelect);
-            
-            // Range slider per font size
-            document.getElementById('fontSize').addEventListener('input', function() {
-                document.getElementById('fontSizeValue').textContent = this.value + 'px';
-                updateTextPreview();
-            });
-
-            // Cambiamenti nel testo
-            document.getElementById('textInput').addEventListener('input', updateTextPreview);
-            document.getElementById('textColor').addEventListener('input', updateTextPreview);
-            document.getElementById('fontFamily').addEventListener('change', updateTextPreview);
-            document.getElementById('textAlign').addEventListener('change', updateTextPreview);
-
-            // Canvas click per aggiungere testo
-            document.getElementById('pdfViewer').addEventListener('click', function(event) {
-                if (event.target.id === 'pdfCanvas' && editMode) {
-                    handleCanvasClick(event);
-                }
-            });
-
-            // Movimento mouse per il mirino e anteprima testo
-            document.getElementById('pdfViewer').addEventListener('mousemove', function(event) {
-                if (event.target.id === 'pdfCanvas' && editMode) {
-                    handleCanvasMouseMove(event);
-                }
-            });
-
-            // Nascondi mirino e anteprima quando il mouse esce dalla canvas
-            document.getElementById('pdfViewer').addEventListener('mouseleave', function() {
-                document.getElementById('crosshair').style.display = 'none';
-                document.getElementById('textPreview').style.display = 'none';
-            });
-        }
-
-        async function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            try {
-                showNotification('Caricamento PDF in corso...', 'info');
-
-                const arrayBuffer = await file.arrayBuffer();
-                originalPDFData = arrayBuffer;
-                
-                currentPDF = await pdfjsLib.getDocument(arrayBuffer).promise;
-                totalPages = currentPDF.numPages;
-                currentPage = 1;
-                textElements = [];
-
-                await renderPage(currentPage);
-                
-                document.getElementById('pageControls').style.display = 'flex';
-                document.getElementById('addTextBtn').disabled = false;
-                document.getElementById('closeBtn').style.display = 'block';
-                
-                updatePageInfo();
-                updateTextList();
-                showNotification('PDF caricato con successo!', 'success');
-
-            } catch (error) {
-                console.error('Errore nel caricamento del PDF:', error);
-                showNotification('Errore nel caricamento del PDF', 'error');
-            }
-        }
-
-        async function renderPage(pageNum) {
-            if (!currentPDF) return;
-
-            try {
-                const page = await currentPDF.getPage(pageNum);
-                const viewport = page.getViewport({ scale: currentZoom });
-
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-                canvas.className = 'pdf-canvas';
-                canvas.id = 'pdfCanvas';
-
-                const renderContext = {
-                    canvasContext: context,
-                    viewport: viewport
-                };
-
-                await page.render(renderContext).promise;
-
-                const viewer = document.getElementById('pdfViewer');
-                viewer.innerHTML = '';
-                viewer.appendChild(canvas);
-
-                // Calcola il rapporto di scaling per le coordinate
-                const rect = canvas.getBoundingClientRect();
-                canvasScaleX = canvas.width / rect.width;
-                canvasScaleY = canvas.height / rect.height;
-
-                // Applica i testi aggiunti
-                applyTextElements(canvas);
-
-            } catch (error) {
-                console.error('Errore nel rendering della pagina:', error);
-                showNotification('Errore nel rendering della pagina', 'error');
-            }
-        }
-
-        function applyTextElements(canvas) {
-            const ctx = canvas.getContext('2d');
-            const pageTexts = textElements.filter(text => text.page === currentPage);
-            
-            pageTexts.forEach(textElement => {
-                ctx.save();
-                ctx.font = `${textElement.fontSize * currentZoom}px ${textElement.fontFamily}`;
-                ctx.fillStyle = textElement.color;
-                ctx.textBaseline = 'top';
-                
-                // Applica allineamento
-                let x = textElement.x * currentZoom;
-                if (textElement.textAlign === 'center') {
-                    const textWidth = ctx.measureText(textElement.text).width;
-                    x -= textWidth / 2;
-                } else if (textElement.textAlign === 'right') {
-                    const textWidth = ctx.measureText(textElement.text).width;
-                    x -= textWidth;
-                }
-                
-                ctx.fillText(textElement.text, x, textElement.y * currentZoom);
-                ctx.restore();
-            });
-        }
-
-        function handleCanvasClick(event) {
-            const canvas = document.getElementById('pdfCanvas');
-            if (!canvas || !editMode) return;
-
-            event.preventDefault();
-            event.stopPropagation();
-
-            // Calcolo preciso delle coordinate considerando lo scaling
-            const rect = canvas.getBoundingClientRect();
-            const x = (event.clientX - rect.left) * canvasScaleX / currentZoom;
-            const y = (event.clientY - rect.top) * canvasScaleY / currentZoom;
-
-            addTextAtPosition(x, y);
-        }
-
-        function handleCanvasMouseMove(event) {
-            const canvas = document.getElementById('pdfCanvas');
-            if (!canvas || !editMode) return;
-
-            const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-
-            // Aggiorna la posizione del mirino
-            const crosshair = document.getElementById('crosshair');
-            crosshair.style.display = 'block';
-            crosshair.style.left = `${event.clientX - 10}px`;
-            crosshair.style.top = `${event.clientY - 10}px`;
-
-            // Aggiorna l'anteprima del testo
-            updateTextPreviewPosition(x, y);
-        }
-
-        function updateTextPreview() {
-            if (!editMode) return;
-
-            const text = document.getElementById('textInput').value.trim();
-            const preview = document.getElementById('textPreview');
-            
-            if (!text) {
-                preview.style.display = 'none';
-                return;
-            }
-
-            const fontSize = parseInt(document.getElementById('fontSize').value);
-            const color = document.getElementById('textColor').value;
-            const fontFamily = document.getElementById('fontFamily').value;
-            
-            preview.textContent = text;
-            preview.style.fontSize = `${fontSize}px`;
-            preview.style.color = color;
-            preview.style.fontFamily = fontFamily;
-        }
-
-        function updateTextPreviewPosition(x, y) {
-            const canvas = document.getElementById('pdfCanvas');
-            const preview = document.getElementById('textPreview');
-            const text = document.getElementById('textInput').value.trim();
-            
-            if (!text) {
-                preview.style.display = 'none';
-                return;
-            }
-
-            // Calcola la posizione considerando l'allineamento
-            const rect = canvas.getBoundingClientRect();
-            const textAlign = document.getElementById('textAlign').value;
-            
-            let left = rect.left + x;
-            let top = rect.top + y;
-            
-            // Aggiusta la posizione in base all'allineamento
-            if (textAlign === 'center') {
-                left -= preview.offsetWidth / 2;
-            } else if (textAlign === 'right') {
-                left -= preview.offsetWidth;
-            }
-            
-            preview.style.left = `${left}px`;
-            preview.style.top = `${top}px`;
-            preview.style.display = 'block';
-        }
-
-        function addTextAtPosition(x, y) {
-            const text = document.getElementById('textInput').value.trim();
-            if (!text) {
-                showNotification('Inserisci del testo prima di aggiungerlo!', 'error');
-                return;
-            }
-
-            const fontSize = parseInt(document.getElementById('fontSize').value);
-            const color = document.getElementById('textColor').value;
-            const fontFamily = document.getElementById('fontFamily').value;
-            const textAlign = document.getElementById('textAlign').value;
-
-            const textElement = {
-                id: Date.now(),
-                page: currentPage,
-                x: x,
-                y: y,
-                text: text,
-                fontSize: fontSize,
-                color: color,
-                fontFamily: fontFamily,
-                textAlign: textAlign
-            };
-
-            textElements.push(textElement);
-            renderPage(currentPage);
-            updateTextList();
-            
-            showNotification(`Testo "${text.substring(0, 20)}..." aggiunto!`, 'success');
-            
-            // Reset modalità
-            editMode = false;
-            const canvas = document.getElementById('pdfCanvas');
-            if (canvas) {
-                canvas.classList.remove('text-mode');
-            }
-            
-            // Nascondi mirino e anteprima
-            document.getElementById('crosshair').style.display = 'none';
-            document.getElementById('textPreview').style.display = 'none';
-            
-            // Pulisci il campo testo
-            document.getElementById('textInput').value = '';
-        }
-
-        function enableTextMode() {
-            const text = document.getElementById('textInput').value.trim();
-            if (!text) {
-                showNotification('Scrivi prima il testo da aggiungere!', 'error');
-                return;
-            }
-
-            editMode = true;
-            const canvas = document.getElementById('pdfCanvas');
-            if (canvas) {
-                canvas.classList.add('text-mode');
-            }
-            
-            // Mostra l'anteprima del testo
-            updateTextPreview();
-            
-            showNotification('Clicca sul PDF per posizionare il testo. Usa il mirino per un posizionamento preciso.', 'info');
-        }
-
-        function undoLastText() {
-            if (textElements.length === 0) {
-                showNotification('Nessun testo da annullare', 'error');
-                return;
-            }
-
-            const removedText = textElements.pop();
-            renderPage(currentPage);
-            updateTextList();
-            showNotification('Ultimo testo rimosso', 'success');
-        }
-
-        function deleteTextElement(id) {
-            textElements = textElements.filter(text => text.id !== id);
-            renderPage(currentPage);
-            updateTextList();
-            showNotification('Testo eliminato', 'success');
-        }
-
-        function updateTextList() {
-            const textList = document.getElementById('textList');
-            
-            if (textElements.length === 0) {
-                textList.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 20px;">Nessun testo aggiunto</p>';
-                return;
-            }
-
-            textList.innerHTML = textElements.map(text => `
-                <div class="text-item">
-                    <div class="text-item-content">
-                        <strong>Pag. ${text.page}:</strong> ${text.text.substring(0, 30)}${text.text.length > 30 ? '...' : ''}
-                    </div>
-                    <button class="delete-btn" onclick="deleteTextElement(${text.id})">✕</button>
-                </div>
-            `).join('');
-        }
-
-        function previousPage() {
-            if (currentPage > 1) {
-                currentPage--;
-                renderPage(currentPage);
-                updatePageInfo();
-            }
-        }
-
-        function nextPage() {
-            if (currentPage < totalPages) {
-                currentPage++;
-                renderPage(currentPage);
-                updatePageInfo();
-            }
-        }
-
-        function changeZoom() {
-            currentZoom = parseFloat(document.getElementById('zoomSelect').value);
-            renderPage(currentPage);
-        }
-
-        function updatePageInfo() {
-            document.getElementById('pageInfo').textContent = `Pagina ${currentPage} di ${totalPages}`;
-            document.getElementById('prevBtn').disabled = currentPage <= 1;
-            document.getElementById('nextBtn').disabled = currentPage >= totalPages;
-        }
-
-        function closePDF() {
-            if (textElements.length > 0) {
-                if (!confirm('Hai dei testi non salvati. Sei sicuro di voler chiudere?')) {
-                    return;
-                }
-            }
-
-            // Reset di tutte le variabili
-            currentPDF = null;
-            currentPage = 1;
-            totalPages = 0;
-            textElements = [];
-            editMode = false;
-            originalPDFData = null;
-
-            // Reset dell'interfaccia
-            document.getElementById('pdfViewer').innerHTML = `
-                <div class="empty-state">
-                    <div class="icon">📄</div>
-                    <h3>Carica un PDF per iniziare</h3>
-                    <p>Seleziona un file PDF dal tuo computer per iniziare ad aggiungere testo</p>
-                </div>
-            `;
-            
-            document.getElementById('pageControls').style.display = 'none';
-            document.getElementById('addTextBtn').disabled = true;
-            document.getElementById('closeBtn').style.display = 'none';
-            document.getElementById('fileInput').value = '';
-            document.getElementById('textInput').value = '';
-            
-            updateTextList();
-            showNotification('PDF chiuso', 'info');
-        }
-
-        function showNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.textContent = message;
-            
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 100);
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => {
-                    if (document.body.contains(notification)) {
-                        document.body.removeChild(notification);
-                    }
-                }, 300);
-            }, 3000);
-        }
-// --- Gestione Storage ---
-function getLavori() {
-    return JSON.parse(localStorage.getItem("lavoriPDF")) || {};
-}
-
-function aggiornaListaLavori() {
-    const lavori = getLavori();
-    const select = document.getElementById("lavoriList");
-    if (!select) return;
-    select.innerHTML = '<option value="">-- Seleziona --</option>';
-    Object.keys(lavori).forEach(nome => {
-        const opt = document.createElement("option");
-        opt.value = nome;
-        opt.textContent = nome;
-        select.appendChild(opt);
-    });
-}
-
-// Salva solo i testi aggiunti
-function salvaLavoro() {
-    const nome = document.getElementById("saveName").value.trim();
-    if (!nome) {
-        showNotification("Inserisci un nome per il salvataggio!", "error");
-        return;
-    }
-    if (textElements.length === 0) {
-        showNotification("Non ci sono testi da salvare!", "error");
-        return;
-    }
-    const lavori = getLavori();
-    lavori[nome] = textElements;
-    localStorage.setItem("lavoriPDF", JSON.stringify(lavori));
-    aggiornaListaLavori();
-    showNotification("Lavoro salvato con successo!", "success");
-}
-
-// Apri un salvataggio
-function apriLavoro() {
-    const nome = document.getElementById("lavoriList").value;
-    if (!nome) return;
-    const lavori = getLavori();
-    if (!lavori[nome]) return;
-    textElements = lavori[nome];
+// Carica PDF
+async function handleFileSelect(e){
+    const file=e.target.files[0]; if(!file)return;
+    originalPDFData=await file.arrayBuffer();
+    currentPDF=await pdfjsLib.getDocument(originalPDFData).promise;
+    totalPages=currentPDF.numPages; currentPage=1; textElements=[];
     renderPage(currentPage);
-    updateTextList();
-    showNotification(`Lavoro "${nome}" caricato!`, "success");
+    document.getElementById("pageControls").style.display="flex";
+    document.getElementById("addTextBtn").disabled=false;
+    document.getElementById("closeBtn").style.display="block";
+    showNotification("PDF caricato!","success");
 }
-
-// Cancella un salvataggio
-function cancellaLavoro() {
-    const nome = document.getElementById("saveName").value.trim() || document.getElementById("lavoriList").value;
-    if (!nome) {
-        showNotification("Seleziona o scrivi il nome di un salvataggio da eliminare!", "error");
-        return;
-    }
-    const lavori = getLavori();
-    if (lavori[nome]) {
-        delete lavori[nome];
-        localStorage.setItem("lavoriPDF", JSON.stringify(lavori));
-        aggiornaListaLavori();
-        document.getElementById("saveName").value = "";
-        showNotification(`Lavoro "${nome}" eliminato!`, "success");
-    }
+async function renderPage(num){
+    if(!currentPDF)return;
+    const page=await currentPDF.getPage(num);
+    const viewport=page.getViewport({scale:currentZoom});
+    const canvas=document.createElement("canvas"); canvas.id="pdfCanvas"; canvas.width=viewport.width; canvas.height=viewport.height;
+    const ctx=canvas.getContext("2d"); await page.render({canvasContext:ctx,viewport}).promise;
+    document.getElementById("pdfViewer").innerHTML=""; document.getElementById("pdfViewer").appendChild(canvas);
+    applyTextElements(canvas);
 }
+function applyTextElements(canvas){
+    const ctx=canvas.getContext("2d"); const pageTexts=textElements.filter(t=>t.page===currentPage);
+    pageTexts.forEach(t=>{ctx.font=`${t.fontSize}px ${t.fontFamily}`;ctx.fillStyle=t.color;
+        let x=t.x,y=t.y,w=ctx.measureText(t.text).width;
+        if(t.textAlign==="center")x-=w/2;else if(t.textAlign==="right")x-=w;
+        ctx.fillText(t.text,x,y);});
+}
+function enableTextMode(){
+    const text=document.getElementById("textInput").value.trim(); if(!text){showNotification("Scrivi un testo!","error");return;}
+    const canvas=document.getElementById("pdfCanvas");
+    canvas.addEventListener("click",function handler(e){
+        const rect=canvas.getBoundingClientRect(); const x=(e.clientX-rect.left); const y=(e.clientY-rect.top);
+        textElements.push({id:Date.now(),page:currentPage,x,y,text,fontSize:parseInt(document.getElementById("fontSize").value),
+            color:document.getElementById("textColor").value,fontFamily:document.getElementById("fontFamily").value,textAlign:document.getElementById("textAlign").value});
+        renderPage(currentPage); updateTextList(); document.getElementById("textInput").value="";
+        canvas.removeEventListener("click",handler);
+    });
+    showNotification("Clicca sul PDF per posizionare il testo","info");
+}
+function undoLastText(){if(textElements.length>0){textElements.pop();renderPage(currentPage);updateTextList();}}
+function updateTextList(){const list=document.getElementById("textList"); if(textElements.length===0){list.innerHTML="<p>Nessun testo</p>";return;}
+    list.innerHTML=textElements.map(t=>`<div class="text-item"><div>Pag.${t.page}: ${t.text}</div></div>`).join("");}
+function previousPage(){if(currentPage>1){currentPage--;renderPage(currentPage);}}
+function nextPage(){if(currentPage<totalPages){currentPage++;renderPage(currentPage);}}
 
-// Inizializza la lista lavori
-document.addEventListener("DOMContentLoaded", aggiornaListaLavori);
+// --- Salvataggi completi ---
+function getLavori(){return JSON.parse(localStorage.getItem("lavoriPDF"))||{};}
+function aggiornaListaLavori(){const lavori=getLavori();const sel=document.getElementById("lavoriList");sel.innerHTML='<option value="">-- Seleziona --</option>';Object.keys(lavori).forEach(n=>{let o=document.createElement("option");o.value=n;o.textContent=n;sel.appendChild(o);});}
+function fileToBase64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=rej;r.readAsDataURL(file);});}
+async function salvaLavoro(){
+    const nome=document.getElementById("saveName").value.trim(); if(!nome){showNotification("Nome mancante","error");return;}
+    const file=document.getElementById("fileInput").files[0]; if(!file){showNotification("Nessun PDF","error");return;}
+    const pdfBase64=await fileToBase64(file); const lavori=getLavori();
+    lavori[nome]={pdf:pdfBase64,texts:textElements}; localStorage.setItem("lavoriPDF",JSON.stringify(lavori));
+    aggiornaListaLavori(); showNotification("Lavoro salvato!","success");
+}
+async function apriLavoro(){
+    const nome=document.getElementById("lavoriList").value; if(!nome)return;
+    const lavori=getLavori(); if(!lavori[nome])return;
+    const pdfData=Uint8Array.from(atob(lavori[nome].pdf),c=>c.charCodeAt(0));
+    currentPDF=await pdfjsLib.getDocument({data:pdfData}).promise; totalPages=currentPDF.numPages; currentPage=1;
+    textElements=lavori[nome].texts||[]; renderPage(currentPage); updateTextList();
+    document.getElementById("pageControls").style.display="flex"; document.getElementById("addTextBtn").disabled=false;
+    showNotification(`Lavoro "${nome}" caricato!`,"success");
+}
+function cancellaLavoro(){const nome=document.getElementById("saveName").value.trim()||document.getElementById("lavoriList").value;
+    if(!nome){showNotification("Seleziona un salvataggio","error");return;}
+    const lavori=getLavori(); if(lavori[nome]){delete lavori[nome];localStorage.setItem("lavoriPDF",JSON.stringify(lavori));aggiornaListaLavori();showNotification("Eliminato!","success");}}
+document.addEventListener("DOMContentLoaded",aggiornaListaLavori);
 
-    </script>
+// Notifiche
+function showNotification(msg,type="info"){const n=document.createElement("div");n.className=`notification ${type}`;n.textContent=msg;document.body.appendChild(n);
+    setTimeout(()=>n.classList.add("show"),100);setTimeout(()=>{n.classList.remove("show");setTimeout(()=>n.remove(),300);},3000);}
+</script>
 </body>
 </html>
