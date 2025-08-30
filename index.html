@@ -649,6 +649,23 @@
                         ↶ Annulla Ultimo
                     </button>
                 </div>
+<!-- Sezione Salvataggio -->
+<div class="tool-section">
+  <h3>💾 Salvataggi</h3>
+  <div class="input-group">
+    <label>Nome salvataggio:</label>
+    <input type="text" id="saveName" placeholder="Es. lavoro1">
+  </div>
+  <button class="btn btn-success" onclick="salvaLavoro()">💾 Salva</button>
+  <button class="btn btn-danger" onclick="cancellaLavoro()">🗑️ Elimina</button>
+  <div class="input-group">
+    <label>Apri lavoro:</label>
+    <select id="lavoriList" onchange="apriLavoro()">
+      <option value="">-- Seleziona --</option>
+    </select>
+  </div>
+</div>
+
 
                 <!-- Lista Testi Aggiunti -->
                 <div class="tool-section">
@@ -1105,6 +1122,74 @@
                 }, 300);
             }, 3000);
         }
+// --- Gestione Storage ---
+function getLavori() {
+    return JSON.parse(localStorage.getItem("lavoriPDF")) || {};
+}
+
+function aggiornaListaLavori() {
+    const lavori = getLavori();
+    const select = document.getElementById("lavoriList");
+    if (!select) return;
+    select.innerHTML = '<option value="">-- Seleziona --</option>';
+    Object.keys(lavori).forEach(nome => {
+        const opt = document.createElement("option");
+        opt.value = nome;
+        opt.textContent = nome;
+        select.appendChild(opt);
+    });
+}
+
+// Salva solo i testi aggiunti
+function salvaLavoro() {
+    const nome = document.getElementById("saveName").value.trim();
+    if (!nome) {
+        showNotification("Inserisci un nome per il salvataggio!", "error");
+        return;
+    }
+    if (textElements.length === 0) {
+        showNotification("Non ci sono testi da salvare!", "error");
+        return;
+    }
+    const lavori = getLavori();
+    lavori[nome] = textElements;
+    localStorage.setItem("lavoriPDF", JSON.stringify(lavori));
+    aggiornaListaLavori();
+    showNotification("Lavoro salvato con successo!", "success");
+}
+
+// Apri un salvataggio
+function apriLavoro() {
+    const nome = document.getElementById("lavoriList").value;
+    if (!nome) return;
+    const lavori = getLavori();
+    if (!lavori[nome]) return;
+    textElements = lavori[nome];
+    renderPage(currentPage);
+    updateTextList();
+    showNotification(`Lavoro "${nome}" caricato!`, "success");
+}
+
+// Cancella un salvataggio
+function cancellaLavoro() {
+    const nome = document.getElementById("saveName").value.trim() || document.getElementById("lavoriList").value;
+    if (!nome) {
+        showNotification("Seleziona o scrivi il nome di un salvataggio da eliminare!", "error");
+        return;
+    }
+    const lavori = getLavori();
+    if (lavori[nome]) {
+        delete lavori[nome];
+        localStorage.setItem("lavoriPDF", JSON.stringify(lavori));
+        aggiornaListaLavori();
+        document.getElementById("saveName").value = "";
+        showNotification(`Lavoro "${nome}" eliminato!`, "success");
+    }
+}
+
+// Inizializza la lista lavori
+document.addEventListener("DOMContentLoaded", aggiornaListaLavori);
+
     </script>
 </body>
 </html>
